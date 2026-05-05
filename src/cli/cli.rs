@@ -5,7 +5,7 @@ use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "skillscripts")]
-#[command(about = "为 AI Agent 构建极速本地技能库索引与检索 CLI")]
+#[command(about = "Fast script search and skill retrieval CLI")]
 #[command(version)]
 struct Cli {
     #[command(subcommand)]
@@ -14,7 +14,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    #[command(about = "Create a local configuration file")]
+    #[command(about = "Create a configuration file")]
     Init {
         #[arg(short = 'f', long, help = "Overwrite the existing configuration file")]
         force: bool,
@@ -23,25 +23,16 @@ enum Commands {
         local: bool,
     },
 
-    #[command(about = "Build the local skill index")]
-    Sync {
-        #[arg(long, help = "Fail on invalid skill headers and report parse errors")]
-        strict: bool,
-    },
-
-    #[command(about = "Print default/local/effective configs")]
+    #[command(about = "Print current configuration")]
     Config,
 
-    #[command(about = "List indexed skills")]
-    List {
-        #[arg(short = 'j', long, help = "Print compact machine-readable JSON")]
-        json: bool,
-    },
+    #[command(about = "List all scripts as YAML")]
+    List,
 
-    #[command(about = "Browse and pick a skill in the TUI")]
+    #[command(about = "Interactive TUI selector with preview")]
     Pick,
 
-    #[command(about = "Search indexed skills with fuzzy matching")]
+    #[command(about = "Fuzzy search scripts")]
     Search {
         #[arg(required = true)]
         query: String,
@@ -51,16 +42,14 @@ enum Commands {
     },
 }
 
-/// Parse CLI args and dispatch the selected command.
 pub(crate) fn run() -> Result<()> {
     let engine = SkillEngine::new();
 
     match Cli::parse().command {
         None => commands::run_default_command(&engine),
         Some(Commands::Init { force, local }) => commands::run_init(&engine, force, local),
-        Some(Commands::Sync { strict }) => commands::run_sync(&engine, strict),
         Some(Commands::Config) => commands::run_config(&engine),
-        Some(Commands::List { json }) => commands::run_list(&engine, json),
+        Some(Commands::List) => commands::run_list(&engine),
         Some(Commands::Pick) => commands::run_pick(&engine),
         Some(Commands::Search { query, limit }) => commands::run_search(&engine, &query, limit),
     }

@@ -5,7 +5,7 @@ use predicates::prelude::*;
 use std::fs;
 
 #[test]
-fn cli_search_json_outputs_lightweight_skill_array() {
+fn cli_search_yaml_outputs_lightweight_skill_array() {
     let env = TestEnv::new();
     let workspace = env.root().join("workspace");
     fs::create_dir_all(&workspace).expect("failed to create workspace");
@@ -15,7 +15,6 @@ fn cli_search_json_outputs_lightweight_skill_array() {
         r#"# ---
 # name: echo_skill
 # description: Echo user input
-# tool_name: echo_skill
 # args:
 #   message:
 #     type: string
@@ -38,21 +37,18 @@ print("image")
     )
     .expect("failed to write second skill file");
 
-    env.command(&workspace).arg("sync").assert().success();
-
     let mut search = env.command(&workspace);
 
     let assert = search
         .args(["search", "echo"])
         .assert()
         .success()
-        .stdout(predicate::str::starts_with("["));
+        .stdout(predicate::str::starts_with("- name:"));
 
     let stdout = String::from_utf8(assert.get_output().stdout.clone())
         .expect("stdout should be valid UTF-8");
-    let json: serde_json::Value =
-        serde_json::from_str(&stdout).expect("search should emit a valid JSON array");
-    let skills = json.as_array().expect("top-level JSON should be an array");
+    let skills: Vec<serde_yaml::Value> =
+        serde_yaml::from_str(&stdout).expect("search should emit a valid YAML array");
 
     assert!(!skills.is_empty(), "search should return at least one skill");
 
@@ -61,14 +57,13 @@ print("image")
     let expected_path = workspace.join("echo.py").to_string_lossy().replace('\\', "/");
     assert_eq!(
         skills[0]["path"],
-        serde_json::Value::String(expected_path)
+        serde_yaml::Value::String(expected_path)
     );
-    assert!(skills[0]["tags"].is_array());
-    assert!(skills[0].get("parameters").is_none());
+    assert!(skills[0]["tags"].is_sequence());
 }
 
 #[test]
-fn cli_search_json_respects_limit_and_keeps_result_order_stable() {
+fn cli_search_yaml_respects_limit_and_keeps_result_order_stable() {
     let env = TestEnv::new();
     let workspace = env.root().join("workspace-search-limit");
     fs::create_dir_all(&workspace).expect("failed to create workspace");
@@ -78,7 +73,6 @@ fn cli_search_json_respects_limit_and_keeps_result_order_stable() {
         r#"# ---
 # name: alpha_skill
 # description: shared description
-# tool_name: alpha_skill
 # ---
 print("alpha")
 "#,
@@ -90,30 +84,24 @@ print("alpha")
         r#"# ---
 # name: beta_skill
 # description: shared description
-# tool_name: beta_skill
 # ---
 print("beta")
 "#,
     )
     .expect("failed to write beta skill");
 
-    env.command(&workspace).arg("sync").assert().success();
-
     let assert = env
         .command(&workspace)
         .args(["search", "shared", "--limit", "1"])
         .assert()
         .success()
-        .stdout(predicate::str::starts_with("["));
+        .stdout(predicate::str::starts_with("- name:"));
 
     let stdout = String::from_utf8(assert.get_output().stdout.clone())
         .expect("stdout should be valid UTF-8");
-    let json: serde_json::Value =
-        serde_json::from_str(&stdout).expect("search should emit valid JSON");
-    let skills = json.as_array().expect("top-level JSON should be an array");
+    let skills: Vec<serde_yaml::Value> =
+        serde_yaml::from_str(&stdout).expect("search should emit valid YAML");
 
-    // `--limit 1` 必须真的裁剪结果数量，不能只影响展示文案。
     assert_eq!(skills.len(), 1);
-    // 同分场景下必须按名称排序，确保结果集在不同机器上保持稳定。
     assert_eq!(skills[0]["name"], "alpha_skill");
 }

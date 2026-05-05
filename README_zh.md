@@ -1,35 +1,74 @@
 # skillscripts
 
-本地优先的 AI Agent 技能库索引与检索 CLI。
+极速脚本搜索与技能检索 CLI。
 
-## 核心功能
+## 它是什么
 
-`skillscripts`（别名 `sks`）解决 Agent 导向技能系统的两个核心问题。
+`skillscripts`（别名 `sks`）是一个本地优先的命令行工具，提供两种核心能力：
 
-### 1) Agent 工作流中的极速技能检索
+**脚本极速搜索**：
+- 你有大量脚本散落在各处，难以找到
+- 你想快速定位某个功能的脚本
+- 你需要一个轻量的脚本管理器
 
-从配置路径构建本地可搜索索引，保证检索结果稳定可复现：
+**技能极速检索**：
+- 你是 AI Agent 开发者，需要管理技能库
+- 你想快速检索可复用的技能
+- 你需要为 Agent 提供工具调用能力
 
-- 扫描全局/本地合并配置下的技能文件
-- 解析标准化元数据（`name`、`description`、`tags`）
-- 构建本地索引缓存，实现低延迟查询
-- 返回稳定的 JSON，用于工具调用集成
+## 核心特性
 
-### 2) 不止于 Markdown 的技能系统
+### 双模式搜索
 
-技能不限于 `.md` 文件。任何脚本或文件只要包含符合文件注释风格的 YAML 头，都可以成为技能。
+同一套命令服务于两种场景：
 
-- 保持原有脚本逻辑不变
-- 仅需添加结构化头部即可完成索引和工具导出
-- 支持混合仓库（Python/Shell/JS/Rust/Lua/Markdown 等）
-- 一技能一目录，保持跨运行时可移植性
+**脚本搜索模式**：
+- 按功能快速定位脚本文件
+- 轻量级脚本管理，无需复杂数据库
+- 模糊匹配即时返回结果
 
-### 核心设计
+**技能检索模式**：
+- 为 AI Agent 检索可复用技能
+- 输出 YAML 格式，可直接用于工具调用
+- 管理 Agent 开发的技能库
 
-- **自动索引** — 首次运行或缓存过期时自动构建/刷新索引（基于 TTL 或配置变更）。`sync` 仍可用于手动重建。
-- **JSON 优先输出** — `search` 和 `list` 始终输出机器可读的 JSON。
-- **模糊搜索** — 对 name、description、tags 进行快速内存评分。路径永不参与搜索。
-- **交互式选择器** — 基于 skim 的 TUI 界面，带语法高亮预览。
+两种模式共享相同的输出格式（YAML，包含 name、description、tags、path），便于将脚本作为 Agent 工具使用。
+
+### 即时扫描
+
+- 并行文件扫描，毫秒级响应
+- 进程内内存缓存，提升重复操作性能
+- 自动检测文件编码，跳过二进制文件
+- 支持 gitignore 规则
+
+### 智能匹配
+
+- 对 `name`、`description`、`tags` 进行模糊匹配
+- 智能评分排序
+- 路径不参与搜索，减少噪音
+
+### YAML 头部
+
+任何脚本添加 YAML 头部即可被索引：
+
+```python
+# ---
+# name: resize_image
+# description: 使用 PIL 调整图片尺寸
+# tags: [image, python]
+# ---
+from PIL import Image
+```
+
+这个头部具有双重作用：
+- **对于脚本搜索**：提供元数据便于快速识别
+- **对于技能检索**：定义工具接口供 Agent 调用
+
+支持的注释风格：`#`、`//`、`--`、`%`、`/**` 等。
+
+### 交互式选择
+
+基于 skim 的 TUI 界面，支持实时预览，适用于脚本选择和技能浏览。
 
 ## 安装
 
@@ -45,102 +84,96 @@ cargo install --path .
 ## 快速上手
 
 ```bash
-skillscripts init
-skillscripts config
-skillscripts search image    # 首次运行自动构建索引
-# 或使用短别名
+# 初始化配置
 sks init
+
+# 搜索脚本/技能
 sks search image
+
+# 列出所有脚本/技能
+sks list
+
+# 交互式选择
+sks pick
 ```
 
-## 核心命令
+## 命令
 
 | 命令 | 说明 |
-|---|---|
-| `init` | 在 `~/.config/skillscripts/skillscripts.yaml` 创建全局配置。`--local` 创建项目级配置。 |
-| `config` | 打印默认配置、本地配置和最终合并配置。 |
-| `sync` | 扫描并重建本地索引缓存。`--strict` 会在遇到格式错误的头部时报错退出。 |
-| `search <query>` | 对索引技能进行模糊搜索。始终输出 JSON：`[{name, tags, description, path}, …]` |
-| `list` | 列出所有已索引技能，输出 JSON。`skillscripts list --json` 输出紧凑格式。 |
-| `pick` | 交互式 TUI 选择器，带预览。 |
+|------|------|
+| `init` | 创建配置文件。`--local` 创建项目级配置。 |
+| `config` | 查看当前配置。 |
+| `search <query>` | 模糊搜索，输出 YAML。 |
+| `list` | 列出所有脚本/技能，输出 YAML。 |
+| `pick` | 交互式 TUI 选择器。 |
 
-### Search 和 List
+## 输出格式
 
-两个命令均只输出 JSON：
+`search` 和 `list` 输出 YAML：
 
-```json
-[
-  {
-    "name": "image_resize",
-    "tags": ["image", "python"],
-    "description": "使用 PIL 调整图片尺寸",
-    "path": "./skills/image_resize"
-  }
-]
-```
-
-`search` 对 `name`、`description`、`tags` 进行模糊匹配。`path` 永不参与搜索。
-
-### 索引生命周期
-
-索引由程序自动管理：
-
-- **首次运行** — 在首次查询前自动构建并缓存索引
-- **缓存过期** — 若距上次同步已超过 `cache_ttl_seconds`，查询前静默重建索引
-- **配置变更** — 若 `scan_paths`、`ignore_patterns` 或 `max_file_size` 与上次同步时不同，查询前静默重建索引
-- **手动同步** — `skillscripts sync` 始终触发重建并打印进度
-
-```
-$ skillscripts search image
-[cache stale, refreshing…]
-[
-  { "name": "image_resize", ... }
-]
+```yaml
+- name: resize_image
+  tags:
+    - image
+    - python
+  description: 使用 PIL 调整图片尺寸
+  path: ./scripts/resize_image.py
 ```
 
 ## 配置
 
-配置文件：
+配置文件位置：
+- 全局：`~/.config/skillscripts/skillscripts.yaml`
+- 本地：`./skillscripts.yaml`（项目级，与全局合并）
 
-- **全局**：`~/.config/skillscripts/skillscripts.yaml`
-- **本地**：`./skillscripts.yaml`（项目级，与全局配置合并）
-
-使用 `skillscripts config` 查看实际生效的运行时配置。
-
-### 最简配置
+### 配置示例
 
 ```yaml
 scan_paths:
   - skills
-  - ./automation
+  - ./scripts
+  - ~/projects/utils
 ignore_patterns:
   - target
   - .git
+  - node_modules
 max_file_size: 1MB
 search_limit: 10
-cache_ttl_seconds: 1h
+report_parse_errors: true
 ```
 
-### 缓存 TTL
+### 配置项说明
 
-支持时长格式：`30s`、`5m`、`2h`、`1d` 或纯秒数。默认为 `1h`。设为 `0` 可禁用基于 TTL 的刷新（仅在配置变更或显式 `sync` 时重建）。
+| 配置项 | 说明 | 默认值 |
+|--------|------|--------|
+| `scan_paths` | 扫描路径列表 | `["."]` |
+| `ignore_patterns` | 忽略模式 | `[]` |
+| `max_file_size` | 最大文件大小 | `1MB` |
+| `search_limit` | 搜索结果数量限制 | `5` |
+| `report_parse_errors` | 报告解析错误 | `false` |
+| `copy_to_clipboard_on_pick` | pick 后复制路径到剪贴板 | `false` |
 
-## 技能头部规范
+## YAML 头部规范
 
-技能是任何包含 YAML 块（使用文件注释语法）的文件。
+### 必填字段
 
-**必填字段：**
+| 字段 | 说明 |
+|------|------|
+| `name` | 脚本/技能名称 |
+| `description` | 脚本/技能描述 |
 
-- `name`
-- `description`
+### 可选字段
 
-**推荐字段：**
+| 字段 | 说明 |
+|------|------|
+| `tags` | 标签列表 |
+| `args` | 参数定义 |
+| `version` | 版本号 |
+| `command_template` | 命令模板 |
 
-- `tags`（字符串标签列表）
-- `args`（参数定义）
+### 示例
 
-### Python 示例
-
+**Python**：
 ```python
 # ---
 # name: disk_check
@@ -152,11 +185,11 @@ cache_ttl_seconds: 1h
 #     description: 目标路径
 #     required: false
 # ---
-print("ok")
+import shutil
+shutil.disk_usage(path)
 ```
 
-### Shell 示例
-
+**Shell**：
 ```bash
 #!/bin/bash
 # ---
@@ -167,39 +200,14 @@ print("ok")
 git log --oneline -10
 ```
 
-## 项目结构
-
-```
-src/
-  model/        # 领域类型：Skill, Index, Config, JsonView
-  io/           # 文件系统操作：scanner, parser, index_store, config_loader
-  services/     # 业务逻辑：engine, index_service, search, sync
-  cli/          # 表现层：commands, picker (skim), output
-```
-
-## 依赖
-
-| Crate | 用途 |
-|---|---|
-| `anyhow` | 错误处理 |
-| `clap` | CLI 参数解析 |
-| `comfy-table` | `list` 的人类可读表格输出 |
-| `dirs` | 平台相关的配置目录 |
-| `dunce` | 路径规范化 |
-| `fuzzy-matcher` | name + description + tags 内存模糊评分 |
-| `ignore` | 快速 glob/gitignore 模式匹配 |
-| `rayon` | 并行文件扫描 |
-| `serde` / `serde_yaml` / `serde_json` | 序列化 |
-| `skim` | 交互式 TUI 选择器 |
-| `syntect` | 选择器预览的语法高亮 |
-| `path-clean` | 路径清理 |
-
-## 开发
-
-```bash
-cargo fmt
-cargo clippy --all-targets --all-features -D warnings
-cargo test
+**JavaScript**：
+```javascript
+// ---
+// name: fetch_data
+// description: 获取远程数据
+// tags: [http, async]
+// ---
+const response = await fetch(url);
 ```
 
 ## License

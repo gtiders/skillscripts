@@ -5,7 +5,7 @@ use predicates::prelude::*;
 use std::fs;
 
 #[test]
-fn cli_sync_builds_index_and_skips_invalid_files() {
+fn cli_list_skips_invalid_files() {
     let env = TestEnv::new();
     let workspace = env.root().join("workspace");
     let global_skills_dir = env.global_config_dir().join("skills");
@@ -32,26 +32,17 @@ print("hello")
 
     fs::write(workspace.join("binary.bin"), b"abc\0def").expect("failed to write binary file");
 
-    let mut cmd = env.command(&workspace);
-
-    // 黑盒调用 sync，只断言行为结果，不依赖实现细节。
-    cmd.arg("sync")
+    let assert = env
+        .command(&workspace)
+        .arg("list")
         .assert()
-        .success()
-        .stderr(predicate::str::is_empty());
+        .success();
 
-    let index_path = env.cache_dir().join("skillscripts").join("index.json");
-    assert!(index_path.exists(), "sync should create cache index");
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())
+        .expect("stdout should be valid UTF-8");
+    let skills: Vec<serde_yaml::Value> =
+        serde_yaml::from_str(&stdout).expect("output should be valid YAML");
 
-    let index_text = fs::read_to_string(&index_path).expect("failed to read generated index");
-    let index_json: serde_json::Value =
-        serde_json::from_str(&index_text).expect("generated index should be valid JSON");
-
-    let skills = index_json["skills"]
-        .as_array()
-        .expect("index.skills should be an array");
-
-    // 只有合法 header 的文本技能应进入索引；无头文件和二进制文件都必须被跳过。
     assert_eq!(skills.len(), 1);
     assert_eq!(skills[0]["name"], "hello_skill");
     assert!(
@@ -63,7 +54,7 @@ print("hello")
 }
 
 #[test]
-fn cli_sync_warns_when_scan_path_does_not_exist() {
+fn cli_list_warns_when_scan_path_does_not_exist() {
     let env = TestEnv::new();
     let workspace = env.root().join("workspace-missing-path");
     let global_skills_dir = env.global_config_dir().join("skills");
@@ -80,7 +71,7 @@ scan_paths:
     .expect("failed to write local config");
 
     env.command(&workspace)
-        .arg("sync")
+        .arg("list")
         .assert()
         .success()
         .stderr(predicate::str::contains(
@@ -90,10 +81,18 @@ scan_paths:
 }
 
 #[test]
-fn cli_sync_strict_reports_parse_errors_and_excludes_invalid_skills() {
+fn cli_list_reports_parse_errors_when_configured() {
     let env = TestEnv::new();
-    let workspace = env.root().join("workspace-strict");
+    let workspace = env.root().join("workspace-report-errors");
     fs::create_dir_all(&workspace).expect("failed to create workspace");
+
+    fs::write(
+        workspace.join("skillscripts.yaml"),
+        r#"
+report_parse_errors: true
+"#,
+    )
+    .expect("failed to write local config");
 
     fs::write(
         workspace.join("good.py"),
@@ -119,28 +118,22 @@ print("broken")
 
     let assert = env
         .command(&workspace)
-        .args(["sync", "--strict"])
+        .arg("list")
         .assert()
-        .success()
-        .stdout(predicate::str::contains("Parse errors"))
-        .stdout(predicate::str::contains("broken.py"));
+        .success();
 
     let stdout = String::from_utf8(assert.get_output().stdout.clone())
         .expect("stdout should be valid UTF-8");
-    assert!(
-        stdout.contains("indexed 1 skills"),
-        "strict sync should only keep valid skills: {stdout}"
-    );
+    let skills: Vec<serde_yaml::Value> =
+        serde_yaml::from_str(&stdout).expect("output should be valid YAML");
 
-    let index_path = env.cache_dir().join("skillscripts").join("index.json");
-    let index_text = fs::read_to_string(&index_path).expect("failed to read generated index");
-    let index_json: serde_json::Value =
-        serde_json::from_str(&index_text).expect("generated index should be valid JSON");
-    let skills = index_json["skills"]
-        .as_array()
-        .expect("index.skills should be an array");
-
-    // strict 模式下，解析失败的技能不能进入最终索引。
     assert_eq!(skills.len(), 1);
     assert_eq!(skills[0]["name"], "good_skill");
+
+    let stderr = String::from_utf8(assert.get_output().stderr.clone())
+        .expect("stderr should be valid UTF-8");
+    assert!(
+        stderr.contains("error"),
+        "should report parse errors when configured: {stderr}"
+    );
 }

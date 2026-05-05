@@ -1,12 +1,12 @@
 [package]
 name = "skillscripts"
-version = "1.0.7"
+version = "1.0.8"
 edition = "2024"
-description = "Zero-config local skill indexing and search CLI for AI Agents"
+description = "Fast script search and skill retrieval CLI"
 license = "MIT"
 repository = "https://github.com/gtiders/skillscripts"
 readme = "README.md"
-keywords = ["agent", "cli", "search", "index", "tui"]
+keywords = ["cli", "search", "script", "fuzzy", "tui"]
 categories = ["command-line-utilities", "development-tools"]
 
 [[bin]]
@@ -20,7 +20,6 @@ path = "src/main.rs"
 [dependencies]
 anyhow = "1.0.102"
 clap = { version = "4.6.0", features = ["derive"] }
-comfy-table = "7.2.2"
 dirs = "6.0.0"
 dunce = "1.0.5"
 fuzzy-matcher = "0.3.7"
@@ -29,10 +28,8 @@ arboard = "3"
 path-clean = "1.0.1"
 rayon = "1.11.0"
 serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.149"
 serde_yaml = "0.9.34"
 skim = "4.4.0"
-syntect = { version = "5.3.0", default-features = false, features = ["default-fancy"] }
 
 [dev-dependencies]
 assert_cmd = "2.2.0"
@@ -43,5 +40,4 @@ tempfile = "3.27.0"
 opt-level = "z"
 lto = true
 codegen-units = 1
-# panic = "abort"
 strip = true

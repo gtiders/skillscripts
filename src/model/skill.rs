@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::Path;
 
-/// Parsed skill frontmatter/header shared by all supported source languages.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct SkillHeader {
     pub(crate) name: String,
@@ -14,12 +12,9 @@ pub(crate) struct SkillHeader {
     #[serde(default)]
     pub(crate) command_template: Option<String>,
     #[serde(default)]
-    pub(crate) tool_name: Option<String>,
-    #[serde(default)]
     pub(crate) args: HashMap<String, ArgDef>,
 }
 
-/// Parameter definition declared inside a skill header.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct ArgDef {
     #[serde(rename = "type")]
@@ -29,7 +24,6 @@ pub(crate) struct ArgDef {
     pub(crate) required: bool,
 }
 
-/// Runtime skill model stored in the local index and rendered by the CLI/TUI.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Skill {
     pub(crate) name: String,
@@ -38,11 +32,9 @@ pub(crate) struct Skill {
     #[serde(default)]
     pub(crate) tags: Vec<String>,
     pub(crate) command_template: Option<String>,
-    pub(crate) parameters: Option<serde_json::Value>,
+    pub(crate) parameters: Option<serde_yaml::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) checksum: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) tool_name: Option<String>,
 }
 
 impl From<(SkillHeader, String)> for Skill {
@@ -57,44 +49,50 @@ impl From<(SkillHeader, String)> for Skill {
             command_template: header.command_template,
             parameters,
             checksum: None,
-            tool_name: header.tool_name,
         }
     }
 }
 
-impl Skill {
-    pub(crate) fn path_file_stem(&self) -> Option<String> {
-        Path::new(&self.path)
-            .file_stem()
-            .and_then(|stem| stem.to_str())
-            .map(ToOwned::to_owned)
-    }
-}
-
-fn build_parameters_schema(args: &HashMap<String, ArgDef>) -> serde_json::Value {
+fn build_parameters_schema(args: &HashMap<String, ArgDef>) -> serde_yaml::Value {
     let mut sorted_args: Vec<_> = args.iter().collect();
-    sorted_args.sort_by(|(left, _), (right, _)| left.cmp(right));
+    sorted_args.sort_by_key(|(name, _)| *name);
 
-    let mut properties = serde_json::Map::with_capacity(sorted_args.len());
+    let mut properties = serde_yaml::Mapping::new();
     let mut required = Vec::new();
 
     for (name, definition) in sorted_args {
+        let mut prop = serde_yaml::Mapping::new();
+        prop.insert(
+            serde_yaml::Value::String("type".to_string()),
+            serde_yaml::Value::String(definition.arg_type.clone()),
+        );
+        prop.insert(
+            serde_yaml::Value::String("description".to_string()),
+            serde_yaml::Value::String(definition.description.clone()),
+        );
         properties.insert(
-            name.clone(),
-            serde_json::json!({
-                "type": definition.arg_type,
-                "description": definition.description
-            }),
+            serde_yaml::Value::String(name.clone()),
+            serde_yaml::Value::Mapping(prop),
         );
 
         if definition.required {
-            required.push(name.clone());
+            required.push(serde_yaml::Value::String(name.clone()));
         }
     }
 
-    serde_json::json!({
-        "type": "object",
-        "properties": properties,
-        "required": required
-    })
+    let mut schema = serde_yaml::Mapping::new();
+    schema.insert(
+        serde_yaml::Value::String("type".to_string()),
+        serde_yaml::Value::String("object".to_string()),
+    );
+    schema.insert(
+        serde_yaml::Value::String("properties".to_string()),
+        serde_yaml::Value::Mapping(properties),
+    );
+    schema.insert(
+        serde_yaml::Value::String("required".to_string()),
+        serde_yaml::Value::Sequence(required),
+    );
+
+    serde_yaml::Value::Mapping(schema)
 }

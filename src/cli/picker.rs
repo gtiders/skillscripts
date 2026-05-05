@@ -4,10 +4,6 @@ use skim::prelude::*;
 use skim::tui::BorderType;
 use std::borrow::Cow;
 use std::sync::Arc;
-use syntect::easy::HighlightLines;
-use syntect::highlighting::{Theme, ThemeSet};
-use syntect::parsing::SyntaxSet;
-use syntect::util::LinesWithEndings;
 
 pub(crate) fn run_skim_picker(items: Vec<Skill>) -> Result<Option<Skill>> {
     if items.is_empty() {
@@ -42,7 +38,6 @@ fn build_options() -> Result<SkimOptions> {
     Ok(SkimOptionsBuilder::default()
         .no_height(true)
         .border(BorderType::Rounded)
-        .color("catppuccin-frappe")
         .highlight_line(true)
         .preview("")
         .multi(false)
@@ -75,45 +70,12 @@ impl SkimItem for PickerItem {
     }
 
     fn preview(&self, _context: PreviewContext) -> ItemPreview {
-        ItemPreview::AnsiText(render_preview(&self.skill))
-    }
-}
-
-fn render_preview(skill: &Skill) -> String {
-    let yaml = match serde_yaml::to_string(skill) {
-        Ok(content) => content,
-        Err(error) => {
-            return format!("render failed: {error}\npath: {}", skill.path);
-        }
-    };
-
-    let syntax_set = SyntaxSet::load_defaults_newlines();
-    let theme_set = ThemeSet::load_defaults();
-    let syntax = syntax_set
-        .find_syntax_by_extension("yaml")
-        .unwrap_or_else(|| syntax_set.find_syntax_plain_text());
-    let Some(theme) = select_theme(&theme_set) else {
-        return yaml;
-    };
-
-    let mut highlighter = HighlightLines::new(syntax, theme);
-    let mut rendered = String::new();
-    for line in LinesWithEndings::from(&yaml) {
-        match highlighter.highlight_line(line, &syntax_set) {
-            Ok(ranges) => {
-                let escaped = syntect::util::as_24_bit_terminal_escaped(&ranges[..], false);
-                rendered.push_str(&escaped);
+        let yaml = match serde_yaml::to_string(&self.skill) {
+            Ok(content) => content,
+            Err(error) => {
+                return ItemPreview::Text(format!("render failed: {error}\npath: {}", self.skill.path));
             }
-            Err(_) => rendered.push_str(line),
-        }
+        };
+        ItemPreview::Text(yaml)
     }
-
-    rendered
-}
-
-fn select_theme(theme_set: &ThemeSet) -> Option<&Theme> {
-    theme_set
-        .themes
-        .get("base16-mocha.dark")
-        .or_else(|| theme_set.themes.values().next())
 }

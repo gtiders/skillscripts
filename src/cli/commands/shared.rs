@@ -1,32 +1,25 @@
 use crate::cli::output::print_skill_yaml;
 use crate::cli::picker::run_skim_picker;
-use crate::model::{Index, Skill};
-use crate::services::{CacheRefreshReason, SkillEngine};
+use crate::model::{ParseError, Skill};
+use crate::services::{ScanOutput, SkillEngine};
 use anyhow::Result;
 use arboard::Clipboard;
 
-pub(crate) fn load_index_or_report(engine: &SkillEngine) -> Result<Index> {
+pub(crate) fn perform_scan(engine: &SkillEngine) -> Result<ScanOutput> {
     let cwd = std::env::current_dir()?;
-    let (index, refresh_reason) = engine.ensure_index(&cwd)?;
+    engine.scan(&cwd)
+}
 
-    if let Some(reason) = refresh_reason {
-        match reason {
-            CacheRefreshReason::Missing => {
-                eprintln!("Local index cache is missing. Rebuilding now...");
-            }
-            CacheRefreshReason::Corrupted => {
-                eprintln!("Local index cache is corrupted. Rebuilding now...");
-            }
-            CacheRefreshReason::Stale { ttl_seconds } => {
-                eprintln!("Local index cache is stale (ttl={ttl_seconds}s). Rebuilding now...");
-            }
-            CacheRefreshReason::ConfigChanged => {
-                eprintln!("Local config changed since last index build. Rebuilding now...");
-            }
-        }
+pub(crate) fn report_errors(errors: &[ParseError]) {
+    if errors.is_empty() {
+        return;
     }
 
-    Ok(index)
+    eprintln!();
+    eprintln!("⚠ Parsed files with {} error(s):", errors.len());
+    for error in errors {
+        eprintln!("  {} - {}", error.path, error.reason);
+    }
 }
 
 pub(crate) fn run_picker(skills: Vec<Skill>, copy_to_clipboard: bool) -> Result<()> {

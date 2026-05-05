@@ -50,7 +50,7 @@ max_file_size: 2MB
     let stdout = String::from_utf8(assert.get_output().stdout.clone())
         .expect("stdout should be valid UTF-8");
 
-    // 生效配置应包含本地扫描目录和全局默认共享 skills 路径。
+    // Effective config should contain local scan path and global default skills path.
     assert!(
         stdout.contains("local-skills"),
         "effective config should contain local scan path"

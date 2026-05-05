@@ -1,51 +1,47 @@
 use crate::io::{ConfigSnapshot, scan_files};
-use crate::model::{Config, Index, ParseError, Skill};
-use crate::services::index_service::IndexRefreshState;
-use crate::services::{SyncResult, build_index, search::fuzzy_search};
-use crate::services::{config_service::ConfigService, index_service::IndexService};
+use crate::model::{Config, ParseError, Skill};
+use crate::services::builder::build_skills;
+use crate::services::{config_service::ConfigService, search::fuzzy_search};
 use anyhow::Result;
+use std::cell::RefCell;
 use std::path::{Path, PathBuf};
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+
+#[derive(Clone)]
+pub(crate) struct ScanOutput {
+    pub(crate) skills: Vec<Skill>,
+    pub(crate) errors: Vec<ParseError>,
+}
 
 pub(crate) struct SkillEngine {
     config_service: ConfigService,
-    index_service: IndexService,
-}
-
-pub(crate) enum CacheRefreshReason {
-    Missing,
-    Corrupted,
-    Stale { ttl_seconds: u64 },
-    ConfigChanged,
+    cache: RefCell<Option<ScanOutput>>,
 }
 
 impl SkillEngine {
     pub(crate) fn new() -> Self {
         Self {
             config_service: ConfigService::new(),
-            index_service: IndexService::new(),
+            cache: RefCell::new(None),
         }
     }
 
-    pub(crate) fn sync(&self, local_dir: &Path, strict: bool) -> Result<SyncResult> {
-        let started_at = Instant::now();
+    pub(crate) fn scan(&self, local_dir: &Path) -> Result<ScanOutput> {
+        if let Some(cached) = self.cache.borrow().as_ref() {
+            return Ok(cached.clone());
+        }
+
         let config = self.config_service.resolve(local_dir)?;
-        let config_fingerprint = config.fingerprint();
         let files = scan_files(&config)?;
-        let total_files = files.len();
 
-        let (index, errors): (_, Vec<ParseError>) =
-            build_index(&files, strict, config_fingerprint);
-        let skills_count = index.skills.len();
+        let (skills, errors) = build_skills(&files, config.report_parse_errors);
 
-        self.index_service.save(&index)?;
-
-        Ok(SyncResult {
-            total_files,
-            skills_count,
-            elapsed_ms: started_at.elapsed().as_millis(),
+        let output = ScanOutput {
+            skills,
             errors,
-        })
+        };
+
+        *self.cache.borrow_mut() = Some(output.clone());
+        Ok(output)
     }
 
     pub(crate) fn init_global_config(&self, force: bool) -> Result<Config> {
@@ -58,35 +54,6 @@ impl SkillEngine {
 
     pub(crate) fn global_config_dir(&self) -> PathBuf {
         self.config_service.global_config_dir()
-    }
-
-    pub(crate) fn ensure_index(
-        &self,
-        local_dir: &Path,
-    ) -> Result<(Index, Option<CacheRefreshReason>)> {
-        let config = self.config_service.resolve(local_dir)?;
-        let expected_fingerprint = config.fingerprint();
-        let now = current_unix_timestamp();
-
-        let check = self
-            .index_service
-            .evaluate_refresh_state(now, config.cache_ttl_seconds, &expected_fingerprint);
-
-        let reason = match check {
-            IndexRefreshState::Usable(index) => return Ok((index, None)),
-            IndexRefreshState::Missing => CacheRefreshReason::Missing,
-            IndexRefreshState::Corrupted => CacheRefreshReason::Corrupted,
-            IndexRefreshState::Stale => CacheRefreshReason::Stale {
-                ttl_seconds: config.cache_ttl_seconds,
-            },
-            IndexRefreshState::ConfigChanged => CacheRefreshReason::ConfigChanged,
-        };
-
-        let files = scan_files(&config)?;
-        let (index, _errors): (_, Vec<ParseError>) =
-            build_index(&files, false, expected_fingerprint);
-        self.index_service.save(&index)?;
-        Ok((index, Some(reason)))
     }
 
     pub(crate) fn resolve_config_snapshot(&self, local_dir: &Path) -> Result<ConfigSnapshot> {
@@ -110,11 +77,9 @@ impl SkillEngine {
         let config = self.config_service.resolve(local_dir)?;
         Ok(config.copy_to_clipboard_on_pick)
     }
-}
 
-fn current_unix_timestamp() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs()
+    pub(crate) fn report_parse_errors(&self, local_dir: &Path) -> Result<bool> {
+        let config = self.config_service.resolve(local_dir)?;
+        Ok(config.report_parse_errors)
+    }
 }

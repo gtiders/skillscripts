@@ -60,24 +60,12 @@ jobs:
         if: matrix.target == 'x86_64-unknown-linux-musl'
         run: sudo apt-get update && sudo apt-get install -y musl-tools
 
-      # 確保發布包可包含專案文檔與 skills 目錄（即使目錄暫時為空）
-      - name: Ensure packaging assets
-        shell: bash
-        run: |
-          mkdir -p skills
-          if [ ! -f skills/.gitkeep ]; then
-            touch skills/.gitkeep
-          fi
-
       - name: Verify packaging assets
         shell: bash
         run: |
           test -f LICENSE
           test -f README.md
           test -f README_zh.md
-          test -d skills
-          test -f skills/skillscripts_builder/SKILL.md
-          test -f skills/skillscripts_usager/SKILL.md
 
       - name: Build and Upload Binary
         uses: taiki-e/upload-rust-binary-action@v1
@@ -86,7 +74,7 @@ jobs:
           target: ${{ matrix.target }}
           archive: skillscripts-$target
           include: >-
-            LICENSE,README.md,README_zh.md,skills
+            LICENSE,README.md,README_zh.md
           tar: all
           zip: all
           token: ${{ secrets.GITHUB_TOKEN }}

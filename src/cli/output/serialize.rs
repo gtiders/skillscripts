@@ -6,13 +6,13 @@ pub(crate) fn print_skill_yaml(skill: &Skill) -> Result<()> {
     print_serialized(|| serde_yaml::to_string(skill).map_err(|error| error.to_string()), "YAML")
 }
 
-pub(crate) fn print_json<T>(value: &T) -> Result<()>
+pub(crate) fn print_yaml<T>(value: &T) -> Result<()>
 where
     T: Serialize,
 {
     print_serialized(
-        || serde_json::to_string_pretty(value).map_err(|error| error.to_string()),
-        "JSON",
+        || serde_yaml::to_string(value).map_err(|error| error.to_string()),
+        "YAML",
     )
 }
 

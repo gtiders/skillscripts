@@ -1,37 +1,76 @@
 # skillscripts
 
-A local-first, fast skill-retrieval CLI for AI agent integration.
+Fast script search and skill retrieval CLI.
 
-## What It Does
+## What It Is
 
-`skillscripts` (alias `sks`) solves two core problems for agent-oriented skill systems.
+`skillscripts` (alias `sks`) is a local-first command-line tool with two core capabilities:
 
-### 1) Fast Skill Retrieval for Agent Workflows
+**Fast Script Search**:
+- You have scripts scattered everywhere and can't find them
+- You want to quickly locate a script by functionality
+- You need a lightweight script manager
 
-It builds a local searchable index from configured paths and keeps retrieval deterministic:
+**Fast Skill Retrieval**:
+- You are an AI Agent developer managing a skill library
+- You want to quickly retrieve reusable skills
+- You need to provide tool-calling capabilities for Agents
 
-- scan skill files from global/local merged config
-- parse normalized metadata (`name`, `description`, `tags`)
-- build a local index cache for low-latency lookup
-- return stable JSON for tool-call integration
+## Core Features
 
-### 2) Skill System Beyond Markdown
+### Dual-Mode Search
 
-A skill is not limited to `.md`. Any script/file can be a skill as long as it contains a valid YAML header in the file's comment style.
+The same command serves two scenarios:
 
-- keep existing script logic unchanged
-- add a structured header for indexing and tool export
-- support mixed repositories (Python/Shell/JS/Rust/Lua/Markdown, etc.)
-- keep one-skill-per-folder layout for portability across runtimes
+**Script Search Mode**:
+- Quickly locate script files by functionality
+- Lightweight script management without complex databases
+- Instant results with fuzzy matching
 
-### Key Design
+**Skill Retrieval Mode**:
+- Retrieve reusable skills for AI Agents
+- Output YAML ready for tool calling
+- Manage skill libraries for Agent development
 
-- **auto-indexing** — the index is built and refreshed automatically on first run or when stale (TTL-based or config changed). `sync` is still available for manual rebuilds.
-- **JSON-first output** — `search` and `list` always emit machine-readable JSON.
-- **fuzzy search** — fast in-memory scoring across name, description, and tags. Paths are never part of the search corpus.
-- **interactive picker** — skim-based TUI for human browsing, with syntax-highlighted preview.
+Both modes share the same output format (YAML with name, description, tags, path), making it easy to use scripts as Agent tools.
 
-## Install
+### Instant Scanning
+
+- Parallel file scanning, millisecond response
+- In-memory caching for repeated operations
+- Automatic encoding detection, skip binary files
+- gitignore rules support
+
+### Smart Matching
+
+- Fuzzy matching on `name`, `description`, `tags`
+- Intelligent scoring and sorting
+- Paths excluded from search to reduce noise
+
+### YAML Header
+
+Any script becomes searchable by adding a YAML header:
+
+```python
+# ---
+# name: resize_image
+# description: Resize image using PIL
+# tags: [image, python]
+# ---
+from PIL import Image
+```
+
+This header serves dual purposes:
+- **For script search**: Provides metadata for quick identification
+- **For skill retrieval**: Defines tool interface for Agent invocation
+
+Supported comment styles: `#`, `//`, `--`, `%`, `/**`, etc.
+
+### Interactive Selection
+
+skim-based TUI interface with live preview, suitable for both script selection and skill browsing.
+
+## Installation
 
 From release:
 - https://github.com/gtiders/skillscripts/releases/latest
@@ -45,102 +84,96 @@ cargo install --path .
 ## Quick Start
 
 ```bash
-skillscripts init
-skillscripts config
-skillscripts search image    # auto-builds index on first run
-# or use the short alias
+# Initialize config
 sks init
+
+# Search scripts/skills
 sks search image
+
+# List all scripts/skills
+sks list
+
+# Interactive selection
+sks pick
 ```
 
-## Core Commands
+## Commands
 
 | Command | Description |
-|---|---|
-| `init` | Create global config at `~/.config/skillscripts/skillscripts.yaml`. Use `--local` for a project-level config. |
-| `config` | Print default, local, and effective merged config. |
-| `sync` | Scan and rebuild the local index cache. Use `--strict` to fail on malformed headers. |
-| `search <query>` | Fuzzy search indexed skills. Always outputs JSON: `[{name, tags, description, path}, …]` |
-| `list` | List all indexed skills as JSON. Use `skillscripts list --json` for compact output. |
-| `pick` | Interactive TUI picker with preview. |
+|---------|-------------|
+| `init` | Create config file. Use `--local` for project-level config. |
+| `config` | View current configuration. |
+| `search <query>` | Fuzzy search, output YAML. |
+| `list` | List all scripts/skills, output YAML. |
+| `pick` | Interactive TUI selector. |
 
-### Search and List
+## Output Format
 
-Both commands emit JSON only:
+`search` and `list` output YAML:
 
-```json
-[
-  {
-    "name": "image_resize",
-    "tags": ["image", "python"],
-    "description": "Resize an image using PIL",
-    "path": "./skills/image_resize"
-  }
-]
-```
-
-`search` fuzzy-matches across `name`, `description`, and `tags`. `path` is never part of the search corpus.
-
-### The Index Lifecycle
-
-The index is managed automatically:
-
-- **first run** — builds and caches the index automatically before the first query
-- **cache stale** — if `cache_ttl_seconds` has elapsed since the last sync, the index is rebuilt silently before the query
-- **config changed** — if `scan_paths`, `ignore_patterns`, or `max_file_size` differ from the last sync, the index is rebuilt silently
-- **manual sync** — `skillscripts sync` always triggers a rebuild and prints progress
-
-```
-$ skillscripts search image
-[cache stale, refreshing…]
-[
-  { "name": "image_resize", ... }
-]
+```yaml
+- name: resize_image
+  tags:
+    - image
+    - python
+  description: Resize image using PIL
+  path: ./scripts/resize_image.py
 ```
 
 ## Configuration
 
-Config files:
+Config file locations:
+- Global: `~/.config/skillscripts/skillscripts.yaml`
+- Local: `./skillscripts.yaml` (project-level, merged with global)
 
-- **global**: `~/.config/skillscripts/skillscripts.yaml`
-- **local**: `./skillscripts.yaml` (project-level, merged with global)
-
-Use `skillscripts config` to inspect the exact runtime result.
-
-### Minimal Config
+### Configuration Example
 
 ```yaml
 scan_paths:
   - skills
-  - ./automation
+  - ./scripts
+  - ~/projects/utils
 ignore_patterns:
   - target
   - .git
+  - node_modules
 max_file_size: 1MB
 search_limit: 10
-cache_ttl_seconds: 1h
+report_parse_errors: true
 ```
 
-### Cache TTL
+### Configuration Options
 
-Accepts durations: `30s`, `5m`, `2h`, `1d`, or plain seconds. Default is `1h`. Set to `0` to disable TTL-based refresh (rebuild only on config change or explicit `sync`).
+| Option | Description | Default |
+|--------|-------------|---------|
+| `scan_paths` | Paths to scan | `["."]` |
+| `ignore_patterns` | Patterns to ignore | `[]` |
+| `max_file_size` | Maximum file size | `1MB` |
+| `search_limit` | Search result limit | `5` |
+| `report_parse_errors` | Report parse errors | `false` |
+| `copy_to_clipboard_on_pick` | Copy path to clipboard after pick | `false` |
 
-## Skill Header Requirements
+## YAML Header Specification
 
-A skill is any file containing a YAML block in its comment syntax.
+### Required Fields
 
-**Minimum fields:**
+| Field | Description |
+|-------|-------------|
+| `name` | Script/skill name |
+| `description` | Script/skill description |
 
-- `name`
-- `description`
+### Optional Fields
 
-**Recommended fields:**
+| Field | Description |
+|-------|-------------|
+| `tags` | Tag list |
+| `args` | Parameter definitions |
+| `version` | Version number |
+| `command_template` | Command template |
 
-- `tags` (list of string tags)
-- `args` (parameter definitions)
+### Examples
 
-### Python Example
-
+**Python**:
 ```python
 # ---
 # name: disk_check
@@ -149,14 +182,14 @@ A skill is any file containing a YAML block in its comment syntax.
 # args:
 #   path:
 #     type: string
-#     description: target path
+#     description: Target path
 #     required: false
 # ---
-print("ok")
+import shutil
+shutil.disk_usage(path)
 ```
 
-### Shell Example
-
+**Shell**:
 ```bash
 #!/bin/bash
 # ---
@@ -167,39 +200,14 @@ print("ok")
 git log --oneline -10
 ```
 
-## Architecture
-
-```
-src/
-  model/        # domain types: Skill, Index, Config, JsonView
-  io/           # filesystem: scanner, parser, index_store, config_loader
-  services/     # business logic: engine, index_service, search, sync
-  cli/          # presentation: commands, picker (skim), output
-```
-
-## Dependencies
-
-| Crate | Role |
-|---|---|
-| `anyhow` | Error handling |
-| `clap` | CLI argument parsing |
-| `comfy-table` | Human-readable table output for `list` |
-| `dirs` | Platform-specific config directory |
-| `dunce` | Path normalization |
-| `fuzzy-matcher` | In-memory fuzzy scoring (name + description + tags) |
-| `ignore` | Fast glob/gitignore pattern matching |
-| `rayon` | Parallel file scanning |
-| `serde` / `serde_yaml` / `serde_json` | Serialization |
-| `skim` | Interactive TUI picker |
-| `syntect` | Syntax highlighting in picker preview |
-| `path-clean` | Path cleaning |
-
-## Development
-
-```bash
-cargo fmt
-cargo clippy --all-targets --all-features -D warnings
-cargo test
+**JavaScript**:
+```javascript
+// ---
+// name: fetch_data
+// description: Fetch remote data
+// tags: [http, async]
+// ---
+const response = await fetch(url);
 ```
 
 ## License

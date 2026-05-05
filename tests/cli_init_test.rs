@@ -30,7 +30,7 @@ fn cli_init_creates_default_config_in_current_workspace() {
     let config: serde_yaml::Value =
         serde_yaml::from_str(&yaml).expect("generated config should be valid YAML");
 
-    // 默认配置文件必须可解析，并包含最基础的发布默认值。
+    // Default config must be parseable and contain basic release defaults.
     assert_eq!(config["scan_paths"][0].as_str(), Some("skills"));
     assert_eq!(config["max_file_size"].as_str(), Some("1MB"));
     assert_eq!(config["search_limit"].as_i64(), Some(5));
@@ -54,7 +54,7 @@ fn cli_init_rejects_existing_config_without_force() {
             "A configuration file already exists",
         ));
 
-    // 不带 --force 时必须保留用户现有配置，不允许悄悄覆盖。
+    // Without --force, must preserve user's existing config, no silent overwrite.
     let current = fs::read_to_string(config_path).expect("failed to read existing config");
     assert_eq!(current, "search_limit: 99\n");
 }

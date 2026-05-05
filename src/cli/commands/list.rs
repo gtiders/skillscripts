@@ -1,23 +1,20 @@
-use crate::cli::output::{print_json, print_skills_table};
-use crate::model::SkillJsonView;
+use crate::cli::output::print_yaml;
+use crate::model::SkillYamlView;
 use crate::services::SkillEngine;
 use anyhow::Result;
 
-use super::shared::load_index_or_report;
+use super::shared::{perform_scan, report_errors};
 
-/// Handle `skillscripts list`.
-pub(crate) fn run_list(engine: &SkillEngine, json: bool) -> Result<()> {
-    let index = load_index_or_report(engine)?;
+pub(crate) fn run_list(engine: &SkillEngine) -> Result<()> {
+    let cwd = std::env::current_dir()?;
+    let output = perform_scan(engine)?;
 
-    if json {
-        let skills: Vec<_> = index.skills.iter().map(SkillJsonView::from).collect();
-        print_json(&skills)?;
-        return Ok(());
+    let skills: Vec<_> = output.skills.iter().map(SkillYamlView::from).collect();
+    print_yaml(&skills)?;
+
+    if engine.report_parse_errors(&cwd)? {
+        report_errors(&output.errors);
     }
-
-    let skill_refs: Vec<_> = index.skills.iter().collect();
-    print_skills_table(&skill_refs);
-    println!("Total {} skills", skill_refs.len());
 
     Ok(())
 }

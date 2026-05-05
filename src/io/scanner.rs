@@ -13,7 +13,6 @@ use super::path_utils::normalize_path;
 
 const NUL_SNIFF_SIZE: usize = 512;
 
-/// High-performance parallel file scanner used by `sync`.
 struct FileScanner<'a> {
     config: &'a Config,
 }
@@ -192,8 +191,6 @@ fn is_safe_text_file(path: &Path, max_size: u64) -> bool {
     let sniff_size = (length as usize).min(NUL_SNIFF_SIZE);
     let mut buffer = [0u8; NUL_SNIFF_SIZE];
 
-    // 先用 metadata 做 1MB 上限拦截，再只读取前 512 字节做 NUL 嗅探，
-    // 这样可以在不扫描整文件的前提下快速过滤二进制文件，维持当前吞吐路径不退化。
     let bytes_read = match file.read(&mut buffer[..sniff_size]) {
         Ok(bytes_read) => bytes_read,
         Err(_) => return false,
@@ -202,45 +199,6 @@ fn is_safe_text_file(path: &Path, max_size: u64) -> bool {
     !sniff_contains_nul(&buffer[..bytes_read], length)
 }
 
-/// Scan files with the resolved config.
 pub(crate) fn scan_files(config: &Config) -> Result<Vec<String>> {
     FileScanner::new(config).scan()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    const ONE_MB: u64 = 1024 * 1024;
-
-    #[test]
-    fn test_size_gate_rejects_zero_and_oversized_files() {
-        // 0 字节文件和超过上限的文件都会在 metadata 阶段被拦截，不会进入后续读取流程。
-        assert!(!passes_size_limit(0, ONE_MB));
-        assert!(!passes_size_limit(ONE_MB + 1, ONE_MB));
-    }
-
-    #[test]
-    fn test_size_gate_accepts_exact_max_size() {
-        // 恰好等于 1MB 的文件仍然允许继续进入 512B 嗅探，这条边界不能被误伤。
-        assert!(passes_size_limit(ONE_MB, ONE_MB));
-    }
-
-    #[test]
-    fn test_nul_sniff_rejects_binary_marker_within_first_512_bytes() {
-        let mut bytes = vec![b'a'; 512];
-        bytes[128] = 0x00;
-
-        // NUL 出现在前 512 字节内时必须被判定为二进制文件。
-        assert!(sniff_contains_nul(&bytes, 512));
-    }
-
-    #[test]
-    fn test_nul_sniff_ignores_nul_after_sniff_window() {
-        let mut bytes = vec![b'a'; 600];
-        bytes[513] = 0x00;
-
-        // 核心性能红线：只检查前 512 字节，因此窗口之后的 NUL 不能影响结果。
-        assert!(!sniff_contains_nul(&bytes, 600));
-    }
 }

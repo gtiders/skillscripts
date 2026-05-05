@@ -7,6 +7,24 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.8] - 2026-05-05
+
+### Changed
+
+- Repositioned project as dual-mode tool: fast script search and skill retrieval for AI Agents
+- Removed bundled skills directory (`skills/`) - users now manage their own script collections
+- Updated README to emphasize dual-mode capabilities with clear use cases
+- Simplified documentation by removing architecture, dependencies, and development sections
+- Changed all JSON output to YAML for better consistency and Agent tool integration
+- Removed `tool_name` field from skill metadata
+- Renamed `sync` command to instant scanning with in-memory caching
+- Removed `comfy-table` and `syntect` dependencies for lighter binary
+
+### Fixed
+
+- Improved configuration merging for scan paths with proper defaults
+- Enhanced error reporting with optional parse error display
+
 ## [1.0.5] - 2026-03-27
 
 ### Added

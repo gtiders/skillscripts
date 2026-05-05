@@ -4,7 +4,7 @@ use common::TestEnv;
 use std::fs;
 
 #[test]
-fn cli_sync_reads_global_and_local_config_together() {
+fn cli_list_reads_global_and_local_config_together() {
     let env = TestEnv::new();
     let workspace = env.root().join("workspace-config-resolution");
     let local_skills_dir = workspace.join("local-skills");
@@ -54,17 +54,12 @@ print("local")
     )
     .expect("failed to write local skill");
 
-    env.command(&workspace).arg("sync").assert().success();
+    let output = env.command(&workspace).arg("list").output().expect("failed to run list");
 
-    let index_path = env.cache_dir().join("skillscripts").join("index.json");
-    let index_text = fs::read_to_string(index_path).expect("failed to read index");
-    let index_json: serde_json::Value =
-        serde_json::from_str(&index_text).expect("index should be valid JSON");
-    let skills = index_json["skills"]
-        .as_array()
-        .expect("index.skills should be an array");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let skills: Vec<serde_yaml::Value> =
+        serde_yaml::from_str(&stdout).expect("output should be valid YAML");
 
-    // 解析逻辑必须同时读取全局和当前目录配置，两边的技能都应进入索引。
     assert_eq!(skills.len(), 2);
     assert!(skills.iter().any(|skill| skill["name"] == "global_skill"));
     assert!(skills.iter().any(|skill| skill["name"] == "local_skill"));

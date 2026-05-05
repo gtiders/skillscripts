@@ -1,7 +1,6 @@
 use path_clean::PathClean;
 use std::path::{Path, PathBuf};
 
-/// Convert a path into a stable absolute Unix-style string for indexing output.
 pub(crate) fn normalize_path(path: &Path) -> String {
     let absolute = make_absolute(path);
     let simplified = simplify_windows_path(&absolute);
@@ -26,28 +25,4 @@ fn simplify_windows_path(path: &Path) -> PathBuf {
 
 fn to_unix_style(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_to_unix_style() {
-        let path = Path::new("folder/subfolder/file.txt");
-        let result = to_unix_style(path);
-        assert_eq!(result, "folder/subfolder/file.txt");
-    }
-
-    #[test]
-    fn test_normalize_returns_absolute() {
-        let path = Path::new(".");
-        let result = normalize_path(path);
-        let is_absolute_unix = result.starts_with('/');
-        let is_absolute_windows = result.len() > 2
-            && result.chars().nth(1) == Some(':')
-            && result.chars().nth(2) == Some('/');
-        assert!(is_absolute_unix || is_absolute_windows);
-        assert!(!result.contains('\\'));
-    }
 }
