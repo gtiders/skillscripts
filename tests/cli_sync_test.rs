@@ -32,11 +32,7 @@ print("hello")
 
     fs::write(workspace.join("binary.bin"), b"abc\0def").expect("failed to write binary file");
 
-    let assert = env
-        .command(&workspace)
-        .arg("list")
-        .assert()
-        .success();
+    let assert = env.command(&workspace).arg("list").assert().success();
 
     let stdout = String::from_utf8(assert.get_output().stdout.clone())
         .expect("stdout should be valid UTF-8");
@@ -63,10 +59,10 @@ fn cli_list_warns_when_scan_path_does_not_exist() {
 
     fs::write(
         workspace.join("skillscripts.yaml"),
-        r#"
+        r"
 scan_paths:
   - ./missing-skills
-"#,
+",
     )
     .expect("failed to write local config");
 
@@ -88,9 +84,9 @@ fn cli_list_reports_parse_errors_when_configured() {
 
     fs::write(
         workspace.join("skillscripts.yaml"),
-        r#"
+        r"
 report_parse_errors: true
-"#,
+",
     )
     .expect("failed to write local config");
 
@@ -116,11 +112,7 @@ print("broken")
     )
     .expect("failed to write broken skill");
 
-    let assert = env
-        .command(&workspace)
-        .arg("list")
-        .assert()
-        .success();
+    let assert = env.command(&workspace).arg("list").assert().success();
 
     let stdout = String::from_utf8(assert.get_output().stdout.clone())
         .expect("stdout should be valid UTF-8");

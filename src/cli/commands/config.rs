@@ -3,11 +3,16 @@ use anyhow::Result;
 
 /// Handle `skillscripts config`.
 pub(crate) fn run_config(engine: &SkillEngine) -> Result<()> {
-    let current_dir = std::env::current_dir()?;
-    let snapshot = engine.resolve_config_snapshot(&current_dir)?;
+    let snapshot = engine.resolve_config_snapshot()?;
 
-    println!("=== DEFAULT CONFIG ===");
-    println!("{}", serde_yaml::to_string(&snapshot.default_config)?);
+    println!("=== BUILT-IN DEFAULTS ===");
+    println!("{}", serde_yaml::to_string(&snapshot.built_in_defaults)?);
+
+    println!("=== GLOBAL CONFIG FILE ===");
+    match snapshot.global_config {
+        Some(global) => println!("{}", serde_yaml::to_string(&global)?),
+        None => println!("null"),
+    }
 
     println!("=== LOCAL CONFIG (CURRENT DIRECTORY) ===");
     match snapshot.local_config {

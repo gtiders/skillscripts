@@ -5,16 +5,11 @@ use anyhow::Result;
 
 use super::shared::{perform_scan, report_errors};
 
-pub(crate) fn run_search(
-    engine: &SkillEngine,
-    query: &str,
-    limit: Option<usize>,
-) -> Result<()> {
-    let cwd = std::env::current_dir()?;
+pub(crate) fn run_search(engine: &SkillEngine, query: &str, limit: Option<usize>) -> Result<()> {
     let output = perform_scan(engine)?;
 
-    let search_limit = engine.resolve_search_limit(&cwd, limit)?;
-    let results = engine.search(&output.skills, query);
+    let search_limit = engine.resolve_search_limit(limit);
+    let results = output.search(query);
     let limited_results: Vec<_> = results.into_iter().take(search_limit).collect();
 
     let skills: Vec<_> = limited_results
@@ -23,7 +18,7 @@ pub(crate) fn run_search(
         .collect();
     print_yaml(&skills)?;
 
-    if engine.report_parse_errors(&cwd)? {
+    if engine.report_parse_errors() {
         report_errors(&output.errors);
     }
 

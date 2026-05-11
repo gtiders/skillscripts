@@ -1,8 +1,38 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt;
+use std::num::ParseIntError;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(transparent)]
+pub(crate) struct TaskId(pub(crate) u32);
+
+impl fmt::Display for TaskId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl From<u32> for TaskId {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl FromStr for TaskId {
+    type Err = ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.parse::<u32>().map(Self)
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct SkillHeader {
+    #[serde(default)]
+    pub(crate) task_id: Option<TaskId>,
     pub(crate) name: String,
     pub(crate) description: String,
     #[serde(default)]
@@ -26,9 +56,12 @@ pub(crate) struct ArgDef {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Skill {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) task_id: Option<TaskId>,
     pub(crate) name: String,
     pub(crate) description: String,
-    pub(crate) path: String,
+    #[serde(serialize_with = "serialize_path")]
+    pub(crate) path: PathBuf,
     #[serde(default)]
     pub(crate) tags: Vec<String>,
     pub(crate) command_template: Option<String>,
@@ -37,11 +70,12 @@ pub(crate) struct Skill {
     pub(crate) checksum: Option<String>,
 }
 
-impl From<(SkillHeader, String)> for Skill {
-    fn from((header, path): (SkillHeader, String)) -> Self {
+impl From<(SkillHeader, PathBuf)> for Skill {
+    fn from((header, path): (SkillHeader, PathBuf)) -> Self {
         let parameters = (!header.args.is_empty()).then(|| build_parameters_schema(&header.args));
 
         Self {
+            task_id: header.task_id,
             name: header.name,
             description: header.description,
             path,
@@ -51,6 +85,17 @@ impl From<(SkillHeader, String)> for Skill {
             checksum: None,
         }
     }
+}
+
+pub(crate) fn display_path(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
+}
+
+fn serialize_path<S>(path: &Path, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    serializer.serialize_str(&display_path(path))
 }
 
 fn build_parameters_schema(args: &HashMap<String, ArgDef>) -> serde_yaml::Value {

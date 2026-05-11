@@ -117,6 +117,7 @@ fn parse_file_size(value: &str) -> Option<u64> {
         .map(|size| size * multiplier)
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 fn serialize_file_size<S>(size: &u64, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,

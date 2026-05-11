@@ -61,8 +61,7 @@ fn is_header_boundary(line: &str, prefix: &str) -> bool {
     let trimmed = line.trim_start();
     trimmed
         .strip_prefix(prefix)
-        .map(|suffix| suffix.trim_start().starts_with(HEADER_SEPARATOR))
-        .unwrap_or(false)
+        .is_some_and(|suffix| suffix.trim_start().starts_with(HEADER_SEPARATOR))
 }
 
 fn strip_comment_prefix<'a>(line: &'a str, prefix: &str) -> &'a str {
@@ -72,8 +71,7 @@ fn strip_comment_prefix<'a>(line: &'a str, prefix: &str) -> &'a str {
         return line;
     }
 
-    trimmed
-        .strip_prefix(prefix)
-        .map(|stripped| stripped.strip_prefix(' ').unwrap_or(stripped))
-        .unwrap_or(trimmed)
+    trimmed.strip_prefix(prefix).map_or(trimmed, |stripped| {
+        stripped.strip_prefix(' ').unwrap_or(stripped)
+    })
 }

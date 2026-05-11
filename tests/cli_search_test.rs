@@ -50,15 +50,18 @@ print("image")
     let skills: Vec<serde_yaml::Value> =
         serde_yaml::from_str(&stdout).expect("search should emit a valid YAML array");
 
-    assert!(!skills.is_empty(), "search should return at least one skill");
+    assert!(
+        !skills.is_empty(),
+        "search should return at least one skill"
+    );
 
     assert_eq!(skills[0]["name"], "echo_skill");
     assert_eq!(skills[0]["description"], "Echo user input");
-    let expected_path = workspace.join("echo.py").to_string_lossy().replace('\\', "/");
-    assert_eq!(
-        skills[0]["path"],
-        serde_yaml::Value::String(expected_path)
-    );
+    let expected_path = workspace
+        .join("echo.py")
+        .to_string_lossy()
+        .replace('\\', "/");
+    assert_eq!(skills[0]["path"], serde_yaml::Value::String(expected_path));
     assert!(skills[0]["tags"].is_sequence());
 }
 
@@ -104,4 +107,62 @@ print("beta")
 
     assert_eq!(skills.len(), 1);
     assert_eq!(skills[0]["name"], "alpha_skill");
+}
+
+#[test]
+fn cli_search_prioritizes_name_then_tags_then_description() {
+    let env = TestEnv::new();
+    let workspace = env.root().join("workspace-search-priority");
+    fs::create_dir_all(&workspace).expect("failed to create workspace");
+
+    fs::write(
+        workspace.join("name.py"),
+        r#"# ---
+# name: alpha_beacon
+# description: generic helper
+# tags: [misc]
+# ---
+print("name")
+"#,
+    )
+    .expect("failed to write name-priority skill");
+
+    fs::write(
+        workspace.join("tags.py"),
+        r#"# ---
+# name: utility_skill
+# description: generic helper
+# tags: [alpha, beacon]
+# ---
+print("tags")
+"#,
+    )
+    .expect("failed to write tag-priority skill");
+
+    fs::write(
+        workspace.join("description.py"),
+        r#"# ---
+# name: helper_skill
+# description: alpha workflow
+# tags: [misc]
+# ---
+print("description")
+"#,
+    )
+    .expect("failed to write description-priority skill");
+
+    let assert = env
+        .command(&workspace)
+        .args(["search", "alpha"])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())
+        .expect("stdout should be valid UTF-8");
+    let skills: Vec<serde_yaml::Value> =
+        serde_yaml::from_str(&stdout).expect("search should emit valid YAML");
+
+    assert_eq!(skills[0]["name"], "alpha_beacon");
+    assert_eq!(skills[1]["name"], "utility_skill");
+    assert_eq!(skills[2]["name"], "helper_skill");
 }

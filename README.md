@@ -37,14 +37,13 @@ Both modes share the same output format (YAML with name, description, tags, path
 ### Instant Scanning
 
 - Parallel file scanning, millisecond response
-- In-memory caching for repeated operations
 - Automatic encoding detection, skip binary files
 - gitignore rules support
 
 ### Smart Matching
 
-- Fuzzy matching on `name`, `description`, `tags`
-- Intelligent scoring and sorting
+- Fuzzy matching on `name`, `tags`, `description`
+- Search priority is `name > tags > description`
 - Paths excluded from search to reduce noise
 
 ### YAML Header
@@ -69,6 +68,9 @@ Supported comment styles: `#`, `//`, `--`, `%`, `/**`, etc.
 ### Interactive Selection
 
 skim-based TUI interface with live preview, suitable for both script selection and skill browsing.
+- Picker list shows `name ✨ tags ✨ description`
+- Picker filtering uses all three fields together
+- Preview uses One Dark-style foreground coloring for YAML
 
 ## Installation
 
@@ -95,6 +97,9 @@ sks list
 
 # Interactive selection
 sks pick
+
+# Resolve a task_id to a path
+sks task 902
 ```
 
 ## Commands
@@ -105,7 +110,8 @@ sks pick
 | `config` | View current configuration. |
 | `search <query>` | Fuzzy search, output YAML. |
 | `list` | List all scripts/skills, output YAML. |
-| `pick` | Interactive TUI selector. |
+| `pick` | Interactive TUI selector with YAML preview. |
+| `task <id>` | Print only the path for a specific `task_id`. |
 
 ## Output Format
 
@@ -142,6 +148,13 @@ search_limit: 10
 report_parse_errors: true
 ```
 
+`sks config` prints four sections so you can inspect the full resolution chain:
+
+- Built-in defaults
+- Global config file
+- Local config file
+- Effective merged config
+
 ### Configuration Options
 
 | Option | Description | Default |
@@ -166,16 +179,26 @@ report_parse_errors: true
 
 | Field | Description |
 |-------|-------------|
+| `task_id` | Optional globally unique integer identifier for `sks task <id>`. |
 | `tags` | Tag list |
 | `args` | Parameter definitions |
 | `version` | Version number |
 | `command_template` | Command template |
+
+### `task_id` Rules
+
+- `task_id` is optional.
+- If present, it must be unique across all scanned skills.
+- Duplicate `task_id` values cause the scan to fail.
+- `sks task <id>` prints only the matched path to `stdout`.
+- If no skill matches, `sks task <id>` exits non-zero and prints the error to `stderr`.
 
 ### Examples
 
 **Python**:
 ```python
 # ---
+# task_id: 902
 # name: disk_check
 # description: Check disk usage
 # tags: [ops, monitoring]
@@ -193,6 +216,7 @@ shutil.disk_usage(path)
 ```bash
 #!/bin/bash
 # ---
+# task_id: 1201
 # name: git_log
 # description: Show recent commits
 # tags: [git, vcs]

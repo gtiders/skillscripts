@@ -44,7 +44,7 @@ print("beta")
         .expect("stdout should be valid UTF-8");
     let skills: Vec<serde_yaml::Value> =
         serde_yaml::from_str(&stdout).expect("list should emit a valid YAML array");
-    
+
     assert_eq!(skills.len(), 2);
     assert_eq!(skills[0]["name"], "alpha_skill");
     assert_eq!(skills[1]["name"], "beta_skill");

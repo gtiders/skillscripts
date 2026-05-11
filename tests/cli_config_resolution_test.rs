@@ -16,19 +16,19 @@ fn cli_list_reads_global_and_local_config_together() {
 
     fs::write(
         env.global_config_file(),
-        r#"
+        r"
 scan_paths:
   - skills
-"#,
+",
     )
     .expect("failed to write global config");
 
     fs::write(
         workspace.join("skillscripts.yaml"),
-        r#"
+        r"
 scan_paths:
   - ./local-skills
-"#,
+",
     )
     .expect("failed to write local config");
 
@@ -54,7 +54,11 @@ print("local")
     )
     .expect("failed to write local skill");
 
-    let output = env.command(&workspace).arg("list").output().expect("failed to run list");
+    let output = env
+        .command(&workspace)
+        .arg("list")
+        .output()
+        .expect("failed to run list");
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let skills: Vec<serde_yaml::Value> =

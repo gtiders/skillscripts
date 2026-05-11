@@ -4,39 +4,39 @@ use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
 pub(crate) struct TestEnv {
-    temp_dir: TempDir,
-    config_dir: PathBuf,
-    home_dir: PathBuf,
+    root: TempDir,
+    config_root: PathBuf,
+    home: PathBuf,
 }
 
 impl TestEnv {
     pub(crate) fn new() -> Self {
-        let temp_dir = tempfile::tempdir().expect("failed to create temp dir");
-        let home_dir = temp_dir.path().join("home");
-        let cache_dir = home_dir.join(".cache");
-        let config_dir = home_dir.join(".config");
+        let root = tempfile::tempdir().expect("failed to create temp dir");
+        let home = root.path().join("home");
+        let cache_dir = home.join(".cache");
+        let config_root = home.join(".config");
 
         fs::create_dir_all(&cache_dir).expect("failed to create cache dir");
-        fs::create_dir_all(&config_dir).expect("failed to create config dir");
-        fs::create_dir_all(&home_dir).expect("failed to create home dir");
+        fs::create_dir_all(&config_root).expect("failed to create config dir");
+        fs::create_dir_all(&home).expect("failed to create home dir");
 
         Self {
-            temp_dir,
-            config_dir,
-            home_dir,
+            root,
+            config_root,
+            home,
         }
     }
 
     pub(crate) fn root(&self) -> &Path {
-        self.temp_dir.path()
+        self.root.path()
     }
 
     pub(crate) fn cache_dir(&self) -> PathBuf {
-        self.home_dir.join(".cache")
+        self.home.join(".cache")
     }
 
     pub(crate) fn global_config_dir(&self) -> PathBuf {
-        self.config_dir.join("skillscripts")
+        self.config_root.join("skillscripts")
     }
 
     pub(crate) fn global_config_file(&self) -> PathBuf {
@@ -44,10 +44,7 @@ impl TestEnv {
     }
 
     pub(crate) fn command_envs(&self) -> Vec<(&'static str, &Path)> {
-        vec![
-            ("HOME", &self.home_dir),
-            ("USERPROFILE", &self.home_dir),
-        ]
+        vec![("HOME", &self.home), ("USERPROFILE", &self.home)]
     }
 
     pub(crate) fn command(&self, workspace: &Path) -> Command {
@@ -63,5 +60,4 @@ impl TestEnv {
         cmd.env("LC_ALL", "en_US.UTF-8");
         cmd
     }
-
 }

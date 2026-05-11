@@ -16,23 +16,23 @@ fn cli_config_prints_default_local_and_effective_config() {
 
     fs::write(
         env.global_config_file(),
-        r#"
+        r"
 scan_paths:
   - skills
 search_limit: 9
-"#,
+",
     )
     .expect("failed to write global config");
 
     fs::write(
         workspace.join("skillscripts.yaml"),
-        r#"
+        r"
 scan_paths:
   - ./local-skills
 ignore_patterns:
   - dist
 max_file_size: 2MB
-"#,
+",
     )
     .expect("failed to write local config");
 
@@ -41,7 +41,8 @@ max_file_size: 2MB
         .arg("config")
         .assert()
         .success()
-        .stdout(predicate::str::contains("=== DEFAULT CONFIG ==="))
+        .stdout(predicate::str::contains("=== BUILT-IN DEFAULTS ==="))
+        .stdout(predicate::str::contains("=== GLOBAL CONFIG FILE ==="))
         .stdout(predicate::str::contains(
             "=== LOCAL CONFIG (CURRENT DIRECTORY) ===",
         ))

@@ -37,14 +37,13 @@
 ### 即时扫描
 
 - 并行文件扫描，毫秒级响应
-- 进程内内存缓存，提升重复操作性能
 - 自动检测文件编码，跳过二进制文件
 - 支持 gitignore 规则
 
 ### 智能匹配
 
-- 对 `name`、`description`、`tags` 进行模糊匹配
-- 智能评分排序
+- 对 `name`、`tags`、`description` 进行模糊匹配
+- 搜索优先级为 `name > tags > description`
 - 路径不参与搜索，减少噪音
 
 ### YAML 头部
@@ -69,6 +68,9 @@ from PIL import Image
 ### 交互式选择
 
 基于 skim 的 TUI 界面，支持实时预览，适用于脚本选择和技能浏览。
+- 列表默认显示 `name ✨ tags ✨ description`
+- 列表过滤会同时使用这三个字段
+- YAML 预览使用 One Dark 风格前景色高亮
 
 ## 安装
 
@@ -95,6 +97,9 @@ sks list
 
 # 交互式选择
 sks pick
+
+# 根据 task_id 输出路径
+sks task 902
 ```
 
 ## 命令
@@ -105,7 +110,8 @@ sks pick
 | `config` | 查看当前配置。 |
 | `search <query>` | 模糊搜索，输出 YAML。 |
 | `list` | 列出所有脚本/技能，输出 YAML。 |
-| `pick` | 交互式 TUI 选择器。 |
+| `pick` | 带 YAML 预览的交互式 TUI 选择器。 |
+| `task <id>` | 仅输出指定 `task_id` 对应的路径。 |
 
 ## 输出格式
 
@@ -142,6 +148,13 @@ search_limit: 10
 report_parse_errors: true
 ```
 
+`sks config` 会打印四段配置，方便排查最终生效结果：
+
+- 内建默认值
+- 全局配置文件
+- 本地配置文件
+- 最终合并后的生效配置
+
 ### 配置项说明
 
 | 配置项 | 说明 | 默认值 |
@@ -166,16 +179,26 @@ report_parse_errors: true
 
 | 字段 | 说明 |
 |------|------|
+| `task_id` | 可选的全局唯一整数标识，可用于 `sks task <id>` |
 | `tags` | 标签列表 |
 | `args` | 参数定义 |
 | `version` | 版本号 |
 | `command_template` | 命令模板 |
+
+### `task_id` 规则
+
+- `task_id` 是可选字段。
+- 如果设置了 `task_id`，它必须在所有扫描到的 skill 中全局唯一。
+- 一旦出现重复 `task_id`，扫描会直接失败。
+- `sks task <id>` 成功时仅向 `stdout` 输出匹配路径。
+- 如果没有匹配项，`sks task <id>` 会以非 0 退出，并把错误打印到 `stderr`。
 
 ### 示例
 
 **Python**：
 ```python
 # ---
+# task_id: 902
 # name: disk_check
 # description: 检查磁盘使用情况
 # tags: [ops, monitoring]
@@ -193,6 +216,7 @@ shutil.disk_usage(path)
 ```bash
 #!/bin/bash
 # ---
+# task_id: 1201
 # name: git_log
 # description: 显示最近提交
 # tags: [git, vcs]

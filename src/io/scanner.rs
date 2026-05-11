@@ -6,7 +6,7 @@ use ignore::{
 };
 use std::fs::File;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use super::path_utils::normalize_path;
@@ -22,7 +22,7 @@ impl<'a> FileScanner<'a> {
         Self { config }
     }
 
-    fn scan(&self) -> Result<Vec<String>> {
+    fn scan(&self) -> Result<Vec<PathBuf>> {
         let files = Arc::new(Mutex::new(Vec::new()));
         let max_size = self.config.max_file_size;
 
@@ -62,21 +62,21 @@ impl<'a> FileScanner<'a> {
 }
 
 struct LocalCollector {
-    shared: Arc<Mutex<Vec<String>>>,
-    local: Vec<String>,
+    shared: Arc<Mutex<Vec<PathBuf>>>,
+    local: Vec<PathBuf>,
 }
 
 impl LocalCollector {
     const FLUSH_THRESHOLD: usize = 256;
 
-    fn new(shared: Arc<Mutex<Vec<String>>>) -> Self {
+    fn new(shared: Arc<Mutex<Vec<PathBuf>>>) -> Self {
         Self {
             shared,
             local: Vec::with_capacity(Self::FLUSH_THRESHOLD),
         }
     }
 
-    fn push(&mut self, path: String) {
+    fn push(&mut self, path: PathBuf) {
         self.local.push(path);
         if self.local.len() >= Self::FLUSH_THRESHOLD {
             self.flush();
@@ -135,8 +135,7 @@ fn build_overrides(root: &Path, ignore_patterns: &[String]) -> Result<Option<Ove
         has_valid_pattern = true;
         let override_pattern = pattern
             .strip_prefix('!')
-            .map(|raw| format!("!{raw}"))
-            .unwrap_or_else(|| format!("!{pattern}"));
+            .map_or_else(|| format!("!{pattern}"), |raw| format!("!{raw}"));
 
         if let Err(error) = builder.add(&override_pattern) {
             eprintln!("Ignored invalid ignore pattern '{pattern}'. Reason: {error}");
@@ -150,7 +149,7 @@ fn build_overrides(root: &Path, ignore_patterns: &[String]) -> Result<Option<Ove
     builder.build().map(Some).map_err(Into::into)
 }
 
-fn take_scanned_files(files: Arc<Mutex<Vec<String>>>) -> Vec<String> {
+fn take_scanned_files(files: Arc<Mutex<Vec<PathBuf>>>) -> Vec<PathBuf> {
     match Arc::try_unwrap(files) {
         Ok(mutex) => match mutex.into_inner() {
             Ok(files) => files,
@@ -167,15 +166,17 @@ fn passes_size_limit(length: u64, max_size: u64) -> bool {
 
 #[inline]
 fn sniff_contains_nul(sniffed: &[u8], file_len: u64) -> bool {
-    let sniff_len = (file_len as usize).min(NUL_SNIFF_SIZE).min(sniffed.len());
+    let sniff_len = usize::try_from(file_len)
+        .unwrap_or(NUL_SNIFF_SIZE)
+        .min(NUL_SNIFF_SIZE)
+        .min(sniffed.len());
     sniffed[..sniff_len].contains(&0x00)
 }
 
 #[inline]
 fn is_safe_text_file(path: &Path, max_size: u64) -> bool {
-    let metadata = match path.metadata() {
-        Ok(metadata) => metadata,
-        Err(_) => return false,
+    let Ok(metadata) = path.metadata() else {
+        return false;
     };
 
     let length = metadata.len();
@@ -183,22 +184,22 @@ fn is_safe_text_file(path: &Path, max_size: u64) -> bool {
         return false;
     }
 
-    let mut file = match File::open(path) {
-        Ok(file) => file,
-        Err(_) => return false,
+    let Ok(mut file) = File::open(path) else {
+        return false;
     };
 
-    let sniff_size = (length as usize).min(NUL_SNIFF_SIZE);
+    let sniff_size = usize::try_from(length)
+        .unwrap_or(NUL_SNIFF_SIZE)
+        .min(NUL_SNIFF_SIZE);
     let mut buffer = [0u8; NUL_SNIFF_SIZE];
 
-    let bytes_read = match file.read(&mut buffer[..sniff_size]) {
-        Ok(bytes_read) => bytes_read,
-        Err(_) => return false,
+    let Ok(bytes_read) = file.read(&mut buffer[..sniff_size]) else {
+        return false;
     };
 
     !sniff_contains_nul(&buffer[..bytes_read], length)
 }
 
-pub(crate) fn scan_files(config: &Config) -> Result<Vec<String>> {
+pub(crate) fn scan_files(config: &Config) -> Result<Vec<PathBuf>> {
     FileScanner::new(config).scan()
 }

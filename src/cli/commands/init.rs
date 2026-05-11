@@ -4,21 +4,24 @@ use anyhow::Result;
 /// Handle `skillscripts init`.
 pub(crate) fn run_init(engine: &SkillEngine, force: bool, local: bool) -> Result<()> {
     let path = if local {
-        std::env::current_dir()?
+        engine.local_dir().to_path_buf()
     } else {
-        engine.global_config_dir()
+        SkillEngine::global_config_dir()
     };
     let config = if local {
-        engine.init_local_config(&path, force)?
+        engine.init_local_config(force)?
     } else {
-        engine.init_global_config(force)?
+        SkillEngine::init_global_config(force)?
     };
 
     println!("Created {}/skillscripts.yaml", path.display());
     println!("Scan Paths: {:?}", config.scan_paths);
     println!("Max File Size: {}", config.max_file_size);
     println!("Search Limit: {}", config.search_limit);
-    println!("Copy to Clipboard on Pick: {}", config.copy_to_clipboard_on_pick);
+    println!(
+        "Copy to Clipboard on Pick: {}",
+        config.copy_to_clipboard_on_pick
+    );
 
     Ok(())
 }
