@@ -7,6 +7,8 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.10] - 2026-06-16
+
 ### Changed
 
 - Simplified the codebase into a flat `cli` / `picker` / `registry` layout.
@@ -14,6 +16,7 @@ and this project follows [Semantic Versioning](https://semver.org/).
 - Removed legacy scanning, metadata parsing, and old command layers that no longer match the registry-driven design.
 - Collapsed integration tests into a single `tests/cli.rs` file.
 - Trimmed unused dependencies, obsolete test fixtures, and stale source directories.
+- Updated the release workflow to build and publish only the `sks` binary.
 
 ## [1.0.8] - 2026-05-05
 
