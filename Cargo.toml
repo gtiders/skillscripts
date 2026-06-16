@@ -1,17 +1,13 @@
 [package]
-name = "skillscripts"
+name = "sks"
 version = "1.0.9"
 edition = "2024"
-description = "Fast script search and skill retrieval CLI"
+description = "Registry-driven script launcher and picker"
 license = "MIT"
-repository = "https://github.com/gtiders/skillscripts"
+repository = "https://github.com/gtiders/sks"
 readme = "README.md"
-keywords = ["cli", "search", "script", "fuzzy", "tui"]
+keywords = ["cli", "script", "registry", "launcher", "tui"]
 categories = ["command-line-utilities", "development-tools"]
-
-[[bin]]
-name = "skillscripts"
-path = "src/main.rs"
 
 [[bin]]
 name = "sks"
@@ -22,15 +18,12 @@ anyhow = "1.0.102"
 clap = { version = "4.6.0", features = ["derive"] }
 dirs = "6.0.0"
 dunce = "1.0.5"
-fuzzy-matcher = "0.3.7"
-ignore = "0.4.25"
-arboard = "3"
 path-clean = "1.0.1"
-rayon = "1.11.0"
 ratatui = "0.30.0"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_yaml = "0.9.34"
 skim = "4.4.0"
+syntect = { version = "5.2.0", default-features = false, features = ["default-fancy"] }
 
 [dev-dependencies]
 assert_cmd = "2.2.0"

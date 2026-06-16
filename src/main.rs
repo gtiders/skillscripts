@@ -1,7 +1,7 @@
 mod cli;
-mod io;
-mod model;
-mod services;
+mod picker;
+mod registry;
+mod run_command;
 
 use anyhow::Result;
 
