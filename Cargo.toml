@@ -1,6 +1,6 @@
 [package]
 name = "sks"
-version = "1.0.10"
+version = "1.0.11"
 edition = "2024"
 description = "Registry-driven script launcher and picker"
 license = "MIT"
@@ -15,18 +15,18 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0.102"
-clap = { version = "4.6.0", features = ["derive"] }
+clap = { version = "4.6.1", features = ["derive"] }
 dirs = "6.0.0"
 dunce = "1.0.5"
 path-clean = "1.0.1"
-ratatui = "0.30.0"
+ratatui = "0.30.2"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_yaml = "0.9.34"
-skim = "4.4.0"
-syntect = { version = "5.2.0", default-features = false, features = ["default-fancy"] }
+skim = "4.8.0"
+syntect = { version = "5.3.0", default-features = false, features = ["default-fancy"] }
 
 [dev-dependencies]
-assert_cmd = "2.2.0"
+assert_cmd = "2.2.2"
 predicates = "3.1.4"
 tempfile = "3.27.0"
 

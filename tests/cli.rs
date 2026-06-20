@@ -160,6 +160,38 @@ scripts:
 }
 
 #[test]
+fn list_preserves_registered_script_comment() {
+    let env = TestEnv::new();
+    let workspace = env.root().join("workspace-list-comment");
+    let scripts_dir = env.global_config_dir().join("scripts");
+    fs::create_dir_all(&workspace).expect("failed to create workspace");
+    fs::create_dir_all(&scripts_dir).expect("failed to create scripts dir");
+
+    fs::write(scripts_dir.join("commented.py"), "print('commented')\n")
+        .expect("failed to write script");
+    env.write_global_config(
+        r"
+scripts:
+  - id: 103
+    path: scripts/commented.py
+    command: python {{path}}
+    comment: Run the commented test script
+",
+    );
+
+    let assert = env.command(&workspace).arg("list").assert().success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())
+        .expect("stdout should be valid UTF-8");
+    let skills: Vec<serde_yaml::Value> =
+        serde_yaml::from_str(&stdout).expect("list should emit a valid YAML array");
+
+    assert_eq!(
+        skills[0]["comment"].as_str(),
+        Some("Run the commented test script")
+    );
+}
+
+#[test]
 fn list_reads_registered_scripts_immediately() {
     let env = TestEnv::new();
     let workspace = env.root().join("workspace-live-list");

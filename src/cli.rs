@@ -52,6 +52,7 @@ fn run_init(force: bool) -> Result<()> {
     println!("- scripts[].id");
     println!("- scripts[].path");
     println!("- scripts[].command");
+    println!("- scripts[].comment");
     Ok(())
 }
 

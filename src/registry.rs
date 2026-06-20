@@ -42,6 +42,8 @@ pub(crate) struct ScriptRegistration {
     pub(crate) id: ScriptId,
     pub(crate) path: String,
     pub(crate) command: String,
+    #[serde(default)]
+    pub(crate) comment: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -50,6 +52,8 @@ pub(crate) struct Skill {
     #[serde(serialize_with = "serialize_path")]
     pub(crate) path: PathBuf,
     pub(crate) command: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) comment: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -203,6 +207,7 @@ fn build_skill(
         id: entry.id,
         path,
         command: entry.command.clone(),
+        comment: entry.comment.clone(),
     })
 }
 

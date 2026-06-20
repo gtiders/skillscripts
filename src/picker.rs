@@ -29,11 +29,9 @@ const SKIM_COLORS: &str = concat!(
     "selected:#98c379"
 );
 const PICKER_HEADER: &str =
-    "Type to filter  |  Enter run  |  Esc cancel  |  Preview: script content";
+    "Type to filter  |  Enter run  |  Esc cancel  |  Preview: YAML metadata + script content";
 const COLUMN_GAP: &str = "  ";
 const ID_WIDTH: usize = 6;
-const MIN_PATH_WIDTH: usize = 16;
-const MIN_COMMAND_WIDTH: usize = 20;
 const GITHUB_DARK_THEME: &[u8] = include_bytes!("themes/github-dark.tmTheme");
 
 static SYNTAX_SET: OnceLock<SyntaxSet> = OnceLock::new();
@@ -83,8 +81,9 @@ struct PickerItem {
 impl PickerItem {
     fn new(skill: Skill) -> Self {
         let path = display_path(&skill.path);
+        let comment = skill.comment.as_deref().unwrap_or_default();
         Self {
-            search_text: format!("{} {} {}", skill.id, path, skill.command),
+            search_text: format!("{} {} {} {}", skill.id, path, skill.command, comment),
             skill,
         }
     }
@@ -99,8 +98,7 @@ impl SkimItem for PickerItem {
         Line::from(format_row(
             context.container_width,
             self.skill.id.0,
-            &display_path(&self.skill.path),
-            &self.skill.command,
+            self.skill.comment.as_deref(),
         ))
     }
 
@@ -121,21 +119,34 @@ impl SkimItem for PickerItem {
 
 fn render_preview(skill: &Skill, bytes: &[u8]) -> String {
     let body = String::from_utf8_lossy(bytes);
+    let metadata =
+        serde_yaml::to_string(skill).unwrap_or_else(|error| format!("metadata: {error}\n"));
     let syntax_set = syntax_set();
-    let syntax = syntax_set
+    let file_syntax = syntax_set
         .find_syntax_for_file(&skill.path)
         .ok()
         .flatten()
         .unwrap_or_else(|| syntax_set.find_syntax_plain_text());
+
+    let content = format!("# YAML\n{metadata}\n---\n\n{body}");
+    let mut rendered = render_highlighted(&content, file_syntax, syntax_set);
+    if !rendered.ends_with('\n') {
+        rendered.push('\n');
+    }
+    rendered.push_str("\x1b[0m");
+
+    rendered
+}
+
+fn render_highlighted(
+    body: &str,
+    syntax: &syntect::parsing::SyntaxReference,
+    syntax_set: &SyntaxSet,
+) -> String {
     let mut highlighter = HighlightLines::new(syntax, preview_theme());
+    let mut rendered = String::new();
 
-    let mut rendered = format!(
-        "\x1b[38;2;92;99;112m# {}\n# command: {}\x1b[0m\n\n",
-        display_path(&skill.path),
-        skill.command
-    );
-
-    for line in LinesWithEndings::from(&body) {
+    for line in LinesWithEndings::from(body) {
         let highlighted = highlighter
             .highlight_line(line, syntax_set)
             .map(|ranges| as_24_bit_terminal_escaped(&ranges[..], false))
@@ -162,46 +173,12 @@ fn preview_theme() -> &'static Theme {
     })
 }
 
-fn format_row(total_width: usize, id: u32, path: &str, command: &str) -> String {
-    let widths = column_widths(total_width);
-    let id_text = format!("{id:<width$}", width = widths.id);
-    let path_text = truncate_left(path, widths.path);
-    let command_text = truncate_right(command, widths.command);
-    format!("{id_text}{COLUMN_GAP}{path_text}{COLUMN_GAP}{command_text}")
-}
-
-struct ColumnWidths {
-    id: usize,
-    path: usize,
-    command: usize,
-}
-
-fn column_widths(total_width: usize) -> ColumnWidths {
-    let available = total_width.saturating_sub(COLUMN_GAP.len() * 2);
-    if available <= ID_WIDTH + MIN_PATH_WIDTH + MIN_COMMAND_WIDTH {
-        let remaining = available.saturating_sub(ID_WIDTH);
-        let path = remaining / 2;
-        return ColumnWidths {
-            id: ID_WIDTH.min(available),
-            path,
-            command: remaining.saturating_sub(path),
-        };
-    }
-
-    let content_width = available - ID_WIDTH;
-    let command = content_width
-        .saturating_sub((content_width * 35 / 100).max(MIN_PATH_WIDTH))
-        .max(MIN_COMMAND_WIDTH);
-
-    ColumnWidths {
-        id: ID_WIDTH,
-        path: content_width.saturating_sub(command),
-        command,
-    }
-}
-
-fn truncate_left(value: &str, width: usize) -> String {
-    truncate(value, width, true)
+fn format_row(total_width: usize, id: u32, comment: Option<&str>) -> String {
+    let id_width = ID_WIDTH.min(total_width);
+    let id_text = format!("{id:<id_width$}");
+    let comment_width = total_width.saturating_sub(id_width + COLUMN_GAP.len());
+    let comment_text = truncate_right(comment.unwrap_or_default(), comment_width);
+    format!("{id_text}{COLUMN_GAP}{comment_text}")
 }
 
 fn truncate_right(value: &str, width: usize) -> String {
@@ -236,4 +213,68 @@ fn truncate(value: &str, width: usize, left: bool) -> String {
     };
 
     format!("{trimmed:<width$}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::registry::ScriptId;
+    use std::path::PathBuf;
+
+    #[test]
+    fn preview_starts_with_yaml_metadata() {
+        let skill = Skill {
+            id: ScriptId(7),
+            path: PathBuf::from("scripts/example.py"),
+            command: "python {{path}}".to_string(),
+            comment: Some("example script".to_string()),
+        };
+
+        let preview = render_preview(&skill, b"print('ok')\n");
+        let plain = strip_ansi(&preview);
+
+        assert!(plain.contains("# YAML"));
+        assert!(plain.contains("id: 7"));
+        assert!(plain.contains("path: scripts/example.py"));
+        assert!(plain.contains("command: python {{path}}"));
+        assert!(plain.contains("comment: example script"));
+        assert!(plain.contains("---"));
+        assert!(!plain.contains("# FILE: scripts/example.py"));
+        assert!(plain.contains("print"));
+    }
+
+    #[test]
+    fn preview_keeps_final_line_without_trailing_newline() {
+        let skill = Skill {
+            id: ScriptId(8),
+            path: PathBuf::from("scripts/no_newline.py"),
+            command: "python {{path}}".to_string(),
+            comment: None,
+        };
+
+        let preview = render_preview(&skill, b"first\nsecond\nfinal line");
+        let plain = strip_ansi(&preview);
+
+        assert!(plain.contains("first"));
+        assert!(plain.contains("second"));
+        assert!(plain.contains("final line\n"));
+    }
+
+    fn strip_ansi(value: &str) -> String {
+        let mut stripped = String::new();
+        let mut chars = value.chars().peekable();
+        while let Some(ch) = chars.next() {
+            if ch == '\x1b' && chars.peek() == Some(&'[') {
+                chars.next();
+                for next in chars.by_ref() {
+                    if next.is_ascii_alphabetic() {
+                        break;
+                    }
+                }
+            } else {
+                stripped.push(ch);
+            }
+        }
+        stripped
+    }
 }
