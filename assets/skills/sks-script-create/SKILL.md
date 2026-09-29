@@ -1,11 +1,11 @@
 ---
 name: sks-script-create
-description: Create, register, update, and validate reusable local scripts managed by sks. Use when writing automation for the user, adding a script to the sks MCP registry, choosing useful script tags and descriptions, or troubleshooting an sks registration.
+description: Create, register, update, and validate reusable local scripts managed by sks. Use when writing automation for the user, adding a script to the sks YAML registry, choosing useful script tags and descriptions, or troubleshooting an sks registration.
 ---
 
 # Create an sks script
 
-1. Search once with the sks MCP `search_scripts` tool before creating a script. Reuse an existing match when it covers the task.
+1. Run `sks search "<capability query>"` once before creating a script. Reuse an existing match when it covers the task.
 2. Choose the YAML registry and a nearby scripts directory.
 3. Write one focused script with explicit arguments, useful errors, and no embedded secrets.
 4. Register a unique `name`, a relative Unix-style `path` using `/`, a `command` containing `{{path}}`, a concise `comment`, and 2–5 useful `tags`.

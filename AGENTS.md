@@ -8,9 +8,8 @@ Runtime code is organized by responsibility:
 - `src/cli.rs` — CLI parsing, command dispatch, and YAML output
 - `src/registry.rs` — YAML loading, imports, validation, path resolution, and registry models
 - `src/run_command.rs` — `sks run <name> [args...]`, snapshots, command expansion, and execution
-- `src/picker.rs` — interactive skim picker and syntax-highlighted preview
-- `src/search.rs` — script search and ranking
-- `src/mcp.rs` — MCP server, search tool, and resource handlers
+- `src/picker.rs` — interactive card picker and syntax-highlighted preview
+- `src/search.rs` — fuzzy script search and ranking
 - `src/skill.rs` — `sks skill use/create` output
 - `src/update.rs` — GitHub Release lookup, target selection, checksum verification, and replacement
 - `src/init.rs` — configuration and Agent Skill initialization
@@ -55,7 +54,7 @@ Group tests by user-visible behavior. Cover successful and failing cases for:
 - duplicate names and configuration errors
 - list and picker YAML output
 - exact `run` matching, argument passthrough, path replacement, and `.sks` snapshots
-- MCP search results and `sks://scripts/<name>` resources
+- CLI search results and ranking
 - skill command output
 - update checks where network-independent tests are possible
 

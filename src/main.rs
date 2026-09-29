@@ -1,12 +1,13 @@
 mod cli;
+mod fuzzy;
 mod init;
-mod mcp;
 mod picker;
 mod portable_path;
 mod registry;
 mod run_command;
 mod search;
 mod skill;
+mod theme;
 mod update;
 
 use anyhow::Result;

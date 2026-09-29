@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-label="sks picker redesign mockup with variable-height script cards, fuzzy match highlights, source preview and bottom search input">
+  <defs>
+    <style>
+      .mono { font-family: 'DejaVu Sans Mono', 'Noto Sans Mono', monospace; }
+      .sans { font-family: 'Noto Sans', 'DejaVu Sans', sans-serif; }
+      .muted { fill: #8291a7; }
+      .body { fill: #d5deea; }
+      .cyan { fill: #72d8df; }
+      .amber { fill: #ffd479; }
+      .label { fill: #7d91aa; font-size: 16px; }
+      .value { fill: #dbe5ef; font-size: 17px; }
+      .code { font-size: 17px; }
+    </style>
+    <clipPath id="list-clip"><rect x="30" y="73" width="875" height="682" rx="10"/></clipPath>
+    <clipPath id="preview-clip"><rect x="946" y="91" width="464" height="756" rx="8"/></clipPath>
+  </defs>
+
+  <rect width="1440" height="900" fill="#0d131c"/>
+  <rect x="14" y="14" width="1412" height="872" rx="18" fill="#121b27" stroke="#364457" stroke-width="2"/>
+
+  <!-- Left: the same list pane, now with content-sized cards. -->
+  <rect x="29" y="28" width="891" height="734" rx="12" fill="#111a25" stroke="#344153"/>
+  <text x="52" y="59" class="mono" fill="#dce9f5" font-size="19" font-weight="bold">SCRIPTS</text>
+  <text x="778" y="59" class="mono muted" font-size="15">9 matches</text>
+  <g clip-path="url(#list-clip)">
+    <rect x="45" y="82" width="857" height="236" rx="12" fill="#1b2a37" stroke="#72d8df" stroke-width="2"/>
+    <rect x="45" y="96" width="5" height="208" rx="2" fill="#72d8df"/>
+    <text x="67" y="119" class="mono cyan" font-size="15">› 01</text>
+    <text x="122" y="119" class="mono" fill="#eff7fb" font-size="23" font-weight="bold">convert_</text>
+    <rect x="232" y="96" width="45" height="30" rx="5" fill="#67502e"/>
+    <text x="234" y="119" class="mono amber" font-size="23" font-weight="bold">ase</text>
+    <text x="278" y="119" class="mono" fill="#eff7fb" font-size="23" font-weight="bold">_to_extxyz</text>
+    <text x="69" y="153" class="mono label">PATH</text>
+    <text x="172" y="153" class="mono value">~/.config/sks/imports/</text>
+    <rect x="445" y="133" width="34" height="23" rx="4" fill="#67502e"/>
+    <text x="447" y="153" class="mono amber" font-size="17">ase</text>
+    <text x="480" y="153" class="mono value">/convert_</text>
+    <rect x="580" y="133" width="34" height="23" rx="4" fill="#67502e"/>
+    <text x="582" y="153" class="mono amber" font-size="17">ase</text>
+    <text x="615" y="153" class="mono value">_to_extxyz.py</text>
+    <text x="69" y="185" class="mono label">COMMAND</text>
+    <text x="172" y="185" class="mono value">python {{path}}</text>
+    <text x="69" y="217" class="mono label">COMMENT</text>
+    <text x="172" y="217" class="mono value">Convert </text>
+    <rect x="252" y="197" width="34" height="23" rx="4" fill="#67502e"/>
+    <text x="254" y="217" class="mono amber" font-size="17">ASE</text>
+    <text x="287" y="217" class="mono value">-readable structures and trajectories</text>
+    <text x="172" y="244" class="mono value">to extended XYZ</text>
+    <text x="69" y="288" class="mono label">TAGS</text>
+    <rect x="169" y="265" width="57" height="29" rx="6" fill="#67502e"/>
+    <text x="181" y="286" class="mono amber" font-size="15">ase</text>
+    <rect x="235" y="265" width="76" height="29" rx="6" fill="#263749"/>
+    <text x="246" y="286" class="mono body" font-size="15">extxyz</text>
+    <rect x="320" y="265" width="109" height="29" rx="6" fill="#263749"/>
+    <text x="331" y="286" class="mono body" font-size="15">conversion</text>
+    <rect x="438" y="265" width="95" height="29" rx="6" fill="#263749"/>
+    <text x="449" y="286" class="mono body" font-size="15">structure</text>
+    <rect x="542" y="265" width="105" height="29" rx="6" fill="#263749"/>
+    <text x="553" y="286" class="mono body" font-size="15">trajectory</text>
+
+    <rect x="45" y="330" width="857" height="194" rx="12" fill="#17222e" stroke="#394b60"/>
+    <text x="67" y="367" class="mono muted" font-size="15">  02</text>
+    <text x="122" y="367" class="mono" fill="#dce8f3" font-size="22" font-weight="bold">estimate_</text>
+    <rect x="244" y="345" width="45" height="29" rx="5" fill="#67502e"/>
+    <text x="246" y="367" class="mono amber" font-size="22" font-weight="bold">ase</text>
+    <text x="290" y="367" class="mono" fill="#dce8f3" font-size="22" font-weight="bold">_cutoff</text>
+    <text x="69" y="399" class="mono label">PATH</text>
+    <text x="172" y="399" class="mono value">~/.config/sks/imports/<tspan fill="#ffd479">ase</tspan>/estimate_<tspan fill="#ffd479">ase</tspan>_cutoff.py</text>
+    <text x="69" y="429" class="mono label">COMMAND</text>
+    <text x="172" y="429" class="mono value">python {{path}}</text>
+    <text x="69" y="459" class="mono label">COMMENT</text>
+    <text x="172" y="459" class="mono value">Estimate neighbour-shell cutoff radii from an</text>
+    <text x="172" y="485" class="mono value"><tspan fill="#ffd479">ASE</tspan>-readable supercell</text>
+    <text x="69" y="512" class="mono label">TAGS</text>
+    <text x="172" y="512" class="mono body" font-size="16">[ <tspan fill="#ffd479">ase</tspan> ]  [ cutoff ]  [ neighbour ]  [ supercell ]  [ structure ]</text>
+
+    <rect x="45" y="536" width="857" height="210" rx="12" fill="#17222e" stroke="#394b60"/>
+    <text x="67" y="573" class="mono muted" font-size="15">  03</text>
+    <text x="122" y="573" class="mono" fill="#dce8f3" font-size="22" font-weight="bold">analyze_</text>
+    <rect x="232" y="551" width="45" height="29" rx="5" fill="#67502e"/>
+    <text x="234" y="573" class="mono amber" font-size="22" font-weight="bold">ase</text>
+    <text x="278" y="573" class="mono" fill="#dce8f3" font-size="22" font-weight="bold">_displacements</text>
+    <text x="69" y="605" class="mono label">PATH</text>
+    <text x="172" y="605" class="mono value">~/.config/sks/imports/<tspan fill="#ffd479">ase</tspan>/</text>
+    <text x="172" y="630" class="mono value">analyze_<tspan fill="#ffd479">ase</tspan>_displacements.py</text>
+    <text x="69" y="661" class="mono label">COMMAND</text>
+    <text x="172" y="661" class="mono value">python {{path}}</text>
+    <text x="69" y="691" class="mono label">COMMENT</text>
+    <text x="172" y="691" class="mono value">Analyze minimum-image displacements in an</text>
+    <text x="172" y="717" class="mono value"><tspan fill="#ffd479">ASE</tspan>-readable trajectory</text>
+    <text x="69" y="747" class="mono label">TAGS</text>
+    <text x="172" y="747" class="mono body" font-size="16">[ <tspan fill="#ffd479">ase</tspan> ]  [ trajectory ]  [ displacement ]  [ distribution ]  [ analysis ]</text>
+  </g>
+
+  <!-- Bottom controls preserve the current prompt position and glyph. -->
+  <rect x="29" y="774" width="891" height="40" rx="9" fill="#17212e" stroke="#344153"/>
+  <text x="49" y="800" class="mono muted" font-size="15">↑↓ select    Enter choose    Esc cancel    PgUp/PgDn scroll</text>
+  <rect x="29" y="825" width="891" height="47" rx="9" fill="#111a25" stroke="#72d8df" stroke-width="2"/>
+  <circle cx="59" cy="846" r="8" fill="none" stroke="#72d8df" stroke-width="2.5"/>
+  <line x1="65" y1="852" x2="73" y2="860" stroke="#72d8df" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="91" y="855" class="mono" fill="#edf7fa" font-size="20">ase</text>
+  <rect x="132" y="836" width="2" height="27" fill="#72d8df"/>
+  <text x="804" y="855" class="mono muted" font-size="16">9 / 24</text>
+
+  <!-- Right: source preview stays in the same pane. -->
+  <rect x="933" y="28" width="478" height="844" rx="12" fill="#111a25" stroke="#344153"/>
+  <text x="953" y="58" class="mono" fill="#dce9f5" font-size="19" font-weight="bold">PREVIEW</text>
+  <text x="953" y="88" class="mono cyan" font-size="15">convert_ase_to_extxyz.py</text>
+  <line x1="950" y1="103" x2="1394" y2="103" stroke="#344153"/>
+  <g clip-path="url(#preview-clip)" class="mono code">
+    <text x="952" y="137" class="muted"> 1</text><text x="994" y="137" fill="#8b9aad">#!/usr/bin/env python3</text>
+    <text x="952" y="168" class="muted"> 2</text><text x="994" y="168" fill="#a6d38b">"""Convert ASE structures</text>
+    <text x="952" y="194" class="muted"> 3</text><text x="994" y="194" fill="#a6d38b">to extended XYZ."""</text>
+    <text x="952" y="225" class="muted"> 4</text>
+    <text x="952" y="256" class="muted"> 5</text><text x="994" y="256" fill="#c792ea">import</text><text x="1060" y="256" class="body"> argparse</text>
+    <text x="952" y="287" class="muted"> 6</text><text x="994" y="287" fill="#c792ea">from</text><text x="1040" y="287" class="body"> pathlib </text><text x="1135" y="287" fill="#c792ea">import</text><text x="1200" y="287" class="body"> Path</text>
+    <text x="952" y="318" class="muted"> 7</text><text x="994" y="318" fill="#c792ea">from</text><text x="1040" y="318" class="body"> ase.io </text><text x="1116" y="318" fill="#c792ea">import</text><text x="1180" y="318" class="body"> read, write</text>
+    <text x="952" y="349" class="muted"> 8</text>
+    <text x="952" y="380" class="muted"> 9</text><text x="994" y="380" fill="#72d8df">def</text><text x="1031" y="380" class="body"> parse_args():</text>
+    <text x="952" y="411" class="muted">10</text><text x="1012" y="411" class="body">parser = argparse.</text>
+    <text x="1012" y="437" class="body">ArgumentParser()</text>
+    <text x="952" y="468" class="muted">11</text><text x="1012" y="468" class="body">parser.add_argument(</text>
+    <text x="1030" y="494" fill="#a6d38b">"input"</text><text x="1103" y="494" class="body">, type=Path)</text>
+    <text x="952" y="525" class="muted">12</text><text x="1012" y="525" class="body">parser.add_argument(</text>
+    <text x="1030" y="551" fill="#a6d38b">"output"</text><text x="1120" y="551" class="body">, type=Path)</text>
+    <text x="952" y="582" class="muted">13</text><text x="1012" y="582" fill="#c792ea">return</text><text x="1078" y="582" class="body"> parser.parse_args()</text>
+    <text x="952" y="613" class="muted">14</text>
+    <text x="952" y="644" class="muted">15</text><text x="994" y="644" fill="#72d8df">def</text><text x="1031" y="644" class="body"> main():</text>
+    <text x="952" y="675" class="muted">16</text><text x="1012" y="675" class="body">args = parse_args()</text>
+    <text x="952" y="706" class="muted">17</text><text x="1012" y="706" class="body">frames = read(</text>
+    <text x="1151" y="706" fill="#a6d38b">str</text><text x="1185" y="706" class="body">(args.input),</text>
+    <text x="952" y="737" class="muted">18</text><text x="1030" y="737" fill="#a6d38b">index="":"</text><text x="1125" y="737" class="body">)</text>
+    <text x="952" y="768" class="muted">19</text><text x="1012" y="768" class="body">write(args.output, frames,</text>
+    <text x="952" y="799" class="muted">20</text><text x="1030" y="799" fill="#a6d38b">format="extxyz"</text><text x="1178" y="799" class="body">)</text>
+  </g>
+  <rect x="950" y="832" width="443" height="25" rx="5" fill="#182637"/>
+  <text x="964" y="850" class="mono muted" font-size="13">Source preview  •  scroll to read more</text>
+</svg>

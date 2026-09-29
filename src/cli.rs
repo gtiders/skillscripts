@@ -1,11 +1,14 @@
 use crate::init::install_agent_skills;
-use crate::mcp;
-use crate::picker::run_skim_picker;
-use crate::registry::{display_path, global_config_dir, init_global_config, load_skills};
+use crate::picker::run_picker;
+use crate::registry::{
+    display_path, global_config_dir, init_global_config, load_registry, load_skills,
+};
 use crate::run_command;
+use crate::search::search_skills;
 use crate::skill;
+use crate::theme;
 use crate::update;
-use anyhow::Result;
+use anyhow::{Result, ensure};
 use clap::{Parser, Subcommand};
 use serde::Serialize;
 use std::ffi::OsString;
@@ -31,10 +34,19 @@ enum Commands {
     },
     #[command(about = "List all registered scripts as YAML")]
     List,
+    #[command(about = "Search registered scripts and print ranked matches as YAML")]
+    Search {
+        #[arg(help = "Capability or script to search for")]
+        query: String,
+        #[arg(long = "tag", help = "Optional relevance tag; may be repeated")]
+        tags: Vec<String>,
+        #[arg(long, default_value_t = 5, help = "Maximum number of matches")]
+        limit: usize,
+    },
+    #[command(about = "List available picker themes as YAML")]
+    Themes,
     #[command(about = "Interactive TUI selector with preview")]
     Pick,
-    #[command(about = "Run the local MCP server over stdio")]
-    Mcp,
     #[command(about = "Print instructions for using or creating sks scripts")]
     Skill {
         #[command(subcommand)]
@@ -70,7 +82,8 @@ pub(crate) fn run() -> Result<()> {
         None | Some(Commands::Pick) => run_picker_command(),
         Some(Commands::Init { force }) => run_init(force),
         Some(Commands::List) => run_list(),
-        Some(Commands::Mcp) => mcp::run(),
+        Some(Commands::Search { query, tags, limit }) => run_search(&query, &tags, limit),
+        Some(Commands::Themes) => print_yaml(&theme::available()),
         Some(Commands::Skill { command }) => match command {
             SkillCommands::Use => skill::print_use(),
             SkillCommands::Create => skill::print_create(),
@@ -102,7 +115,7 @@ fn run_init(force: bool) -> Result<()> {
     println!("- scripts[].command");
     println!("- scripts[].comment");
     println!("- scripts[].tags");
-    println!("- mcp.search_limit");
+    println!("- picker.theme");
     Ok(())
 }
 
@@ -110,8 +123,23 @@ fn run_list() -> Result<()> {
     print_yaml(&load_skills()?)
 }
 
+fn run_search(query: &str, tags: &[String], limit: usize) -> Result<()> {
+    ensure!(limit > 0, "search limit must be greater than zero");
+    ensure!(
+        !query.trim().is_empty() || !tags.is_empty(),
+        "search query or --tag is required"
+    );
+    let skills = load_skills()?;
+    let matches = search_skills(&skills, Some(query), tags, limit)
+        .into_iter()
+        .map(|entry| entry.skill)
+        .collect::<Vec<_>>();
+    print_yaml(&matches)
+}
+
 fn run_picker_command() -> Result<()> {
-    match run_skim_picker(load_skills()?)? {
+    let registry = load_registry()?;
+    match run_picker(registry.skills, registry.picker_theme)? {
         Some(skill) => {
             print_yaml(&skill)?;
             println!("\nScript Path: {}", display_path(&skill.path));

@@ -87,7 +87,10 @@ fn init_creates_global_config() {
         serde_yaml::from_str(&yaml).expect("generated config should be valid YAML");
 
     assert_eq!(config["imports"][0].as_str(), Some("scripts.yaml"));
-    assert_eq!(config["mcp"]["search_limit"].as_i64(), Some(5));
+    assert_eq!(
+        config["picker"]["theme"].as_str(),
+        Some("Catppuccin Frappe")
+    );
     assert!(config["scripts"].is_sequence());
     assert_eq!(
         fs::read_to_string(env.imported_scripts_file()).unwrap(),
@@ -102,6 +105,65 @@ fn init_creates_global_config() {
     assert!(use_skill.contains("name: sks-script-use"));
     assert!(use_skill.contains("every request to use a script"));
     env.command(&workspace).arg("list").assert().success();
+}
+
+#[test]
+fn themes_lists_library_presets_without_config() {
+    let env = TestEnv::new();
+    let output = env.command(env.root()).arg("themes").output().unwrap();
+    assert!(output.status.success());
+    let themes: serde_yaml::Value = serde_yaml::from_slice(&output.stdout).unwrap();
+    let names: Vec<&str> = themes
+        .as_sequence()
+        .unwrap()
+        .iter()
+        .filter_map(|entry| entry["name"].as_str())
+        .collect();
+    assert!(names.contains(&"Github Dark"));
+    assert!(names.contains(&"Dark Plus"));
+    assert!(names.contains(&"Catppuccin Latte"));
+    assert!(names.contains(&"Catppuccin Frappe"));
+}
+
+#[test]
+fn environment_cannot_override_picker_theme() {
+    let env = TestEnv::new();
+    env.write_global_config("picker:\n  theme: Catppuccin Frappe\nscripts: []\n");
+    env.command(env.root())
+        .arg("pick")
+        .env("SKS_THEME", "not a theme")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("No script selected."));
+}
+
+#[test]
+fn picker_theme_config_accepts_library_name_and_rejects_unknown_name() {
+    let env = TestEnv::new();
+    env.write_global_config("picker:\n  theme: Dark Plus\nscripts: []\n");
+    env.command(env.root()).arg("list").assert().success();
+    env.write_global_config("picker:\n  theme: missing theme\nscripts: []\n");
+    env.command(env.root())
+        .arg("list")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("run `sks themes`"));
+}
+
+#[test]
+fn imported_config_cannot_override_picker_theme() {
+    let env = TestEnv::new();
+    env.write_global_config("imports: [scripts.yaml]\n");
+    fs::write(
+        env.imported_scripts_file(),
+        "picker:\n  theme: Dark Plus\nscripts: []\n",
+    )
+    .unwrap();
+    env.command(env.root())
+        .arg("list")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("cannot declare picker options"));
 }
 
 #[test]
@@ -123,6 +185,26 @@ fn init_keeps_existing_config_and_installs_missing_skill() {
     );
     assert!(env.installed_skill_file("sks-script-create").is_file());
     assert!(env.installed_skill_file("sks-script-use").is_file());
+}
+
+#[test]
+fn init_updates_old_mcp_skill_guidance_without_replacing_custom_content() {
+    let env = TestEnv::new();
+    env.write_global_config("scripts: []\n");
+    let path = env.installed_skill_file("sks-script-use");
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(
+        &path,
+        "Search once with the sks MCP `search_scripts` tool.\nRead the source resource.\nCustom guidance stays.\n",
+    )
+    .unwrap();
+
+    env.command(env.root()).arg("init").assert().success();
+    let updated = fs::read_to_string(path).unwrap();
+    assert!(updated.contains("sks search"));
+    assert!(updated.contains("result's `path`"));
+    assert!(updated.contains("Custom guidance stays."));
+    assert!(!updated.contains("MCP"));
 }
 
 #[test]
@@ -288,41 +370,6 @@ scripts:
     assert_eq!(skills[0]["tags"][1].as_str(), Some("document"));
     assert_eq!(skills[0]["tags"].as_sequence().unwrap().len(), 2);
     assert!(skills[1].get("tags").is_none());
-}
-
-#[test]
-fn list_validates_the_global_mcp_search_limit() {
-    let env = TestEnv::new();
-    let workspace = env.root().join("workspace-invalid-search-limit");
-    fs::create_dir_all(&workspace).unwrap();
-    env.write_global_config("mcp:\n  search_limit: 11\nscripts: []\n");
-
-    env.command(&workspace)
-        .arg("list")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains(
-            "mcp.search_limit must be between 1 and 10",
-        ));
-}
-
-#[test]
-fn imported_configs_cannot_override_global_mcp_options() {
-    let env = TestEnv::new();
-    let workspace = env.root().join("workspace-imported-mcp");
-    fs::create_dir_all(&workspace).unwrap();
-    env.write_global_config("imports: [scripts.yaml]\n");
-    fs::write(
-        env.imported_scripts_file(),
-        "mcp:\n  search_limit: 2\nscripts: []\n",
-    )
-    .unwrap();
-
-    env.command(&workspace)
-        .arg("list")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("cannot declare mcp options"));
 }
 
 #[test]
@@ -653,12 +700,14 @@ fn skill_commands_print_the_embedded_guides() {
         .args(["skill", "use"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("name: sks-script-use"));
+        .stdout(predicate::str::contains("name: sks-script-use"))
+        .stdout(predicate::str::contains("sks search"));
     env.command(&workspace)
         .args(["skill", "create"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("name: sks-script-create"));
+        .stdout(predicate::str::contains("name: sks-script-create"))
+        .stdout(predicate::str::contains("sks search"));
 }
 
 #[test]
@@ -757,54 +806,54 @@ fn run_reports_usage_without_id() {
 }
 
 #[test]
-fn mcp_exposes_search_instructions_results_and_source_resources() {
+fn search_returns_ranked_yaml_with_source_paths() {
     let env = TestEnv::new();
-    let workspace = env.root().join("workspace-mcp");
+    let workspace = env.root().join("workspace-search");
     let scripts_dir = env.global_config_dir().join("scripts");
-    fs::create_dir_all(&workspace).expect("failed to create workspace");
-    fs::create_dir_all(&scripts_dir).expect("failed to create scripts dir");
-    fs::write(scripts_dir.join("markdown_pdf.py"), "print('pdf source')\n").unwrap();
+    fs::create_dir_all(&workspace).unwrap();
+    fs::create_dir_all(&scripts_dir).unwrap();
+    fs::write(scripts_dir.join("markdown_pdf.py"), "print('pdf')\n").unwrap();
+    fs::write(scripts_dir.join("notes.py"), "print('notes')\n").unwrap();
     env.write_global_config(
         r"
 scripts:
-  - name: script_701
-    path: scripts/markdown_pdf.py
-    command: python {{path}}
-    comment: Convert Markdown documents to PDF
-    tags: [markdown, pdf]
+  - { name: markdown_pdf, path: scripts/markdown_pdf.py, command: 'python {{path}}', comment: Convert Markdown to PDF, tags: [markdown, pdf] }
+  - { name: notes, path: scripts/notes.py, command: 'python {{path}}', comment: Manage notes, tags: [text] }
 ",
     );
-    let requests = concat!(
-        "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{},\"clientInfo\":{\"name\":\"test\",\"version\":\"1\"}}}\n",
-        "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}\n",
-        "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\",\"params\":{}}\n",
-        "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"search_scripts\",\"arguments\":{\"query\":\"markdown pdf\"}}}\n",
-        "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"search_scripts\",\"arguments\":{\"query\":\"nonexistent xyz\"}}}\n",
-        "{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"resources/read\",\"params\":{\"uri\":\"sks://scripts/script_701/source\"}}\n"
-    );
 
-    env.command(&workspace)
-        .arg("mcp")
-        .write_stdin(requests)
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("before writing"))
-        .stdout(predicate::str::contains(
-            "request to use a script is always an explicit search trigger",
-        ))
-        .stdout(predicate::str::contains("readOnlyHint"))
-        .stdout(predicate::str::contains("search_scripts"))
-        .stdout(predicate::str::contains("sks run script_701 [args...]"))
-        .stdout(predicate::str::contains(
-            "No matching registered scripts found",
-        ))
-        .stdout(predicate::str::contains("pdf source"));
+    let output = env
+        .command(&workspace)
+        .args(["search", "markdown pdf"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let matches: Vec<serde_yaml::Value> = serde_yaml::from_slice(&output.stdout).unwrap();
+    assert_eq!(matches.len(), 1);
+    assert_eq!(matches[0]["name"].as_str(), Some("markdown_pdf"));
+    assert!(
+        matches[0]["path"]
+            .as_str()
+            .unwrap()
+            .ends_with("scripts/markdown_pdf.py")
+    );
+    assert_eq!(matches[0]["command"].as_str(), Some("python {{path}}"));
+    assert_eq!(matches[0]["tags"][0].as_str(), Some("markdown"));
+
+    let output = env
+        .command(&workspace)
+        .args(["search", "nonexistent xyz"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let empty: Vec<serde_yaml::Value> = serde_yaml::from_slice(&output.stdout).unwrap();
+    assert!(empty.is_empty());
 }
 
 #[test]
-fn mcp_uses_the_global_search_limit_when_the_request_omits_limit() {
+fn search_limit_and_tags_rank_matches() {
     let env = TestEnv::new();
-    let workspace = env.root().join("workspace-mcp-global-limit");
+    let workspace = env.root().join("workspace-search-limit");
     let scripts_dir = env.global_config_dir().join("scripts");
     fs::create_dir_all(&workspace).unwrap();
     fs::create_dir_all(&scripts_dir).unwrap();
@@ -813,38 +862,28 @@ fn mcp_uses_the_global_search_limit_when_the_request_omits_limit() {
     }
     env.write_global_config(
         r"
-mcp:
-  search_limit: 2
 scripts:
-  - { name: script_1, path: scripts/pdf-1.py, command: 'python {{path}}', comment: Create PDF }
-  - { name: script_2, path: scripts/pdf-2.py, command: 'python {{path}}', comment: Create PDF }
+  - { name: script_1, path: scripts/pdf-1.py, command: 'python {{path}}', comment: Create PDF, tags: [document] }
+  - { name: script_2, path: scripts/pdf-2.py, command: 'python {{path}}', comment: Create PDF, tags: [image] }
   - { name: script_3, path: scripts/pdf-3.py, command: 'python {{path}}', comment: Create PDF }
   - { name: script_4, path: scripts/pdf-4.py, command: 'python {{path}}', comment: Create PDF }
 ",
     );
-    let requests = concat!(
-        "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{},\"clientInfo\":{\"name\":\"test\",\"version\":\"1\"}}}\n",
-        "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}\n",
-        "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"search_scripts\",\"arguments\":{\"query\":\"pdf\"}}}\n"
-    );
 
-    let assert = env
+    let output = env
         .command(&workspace)
-        .arg("mcp")
-        .write_stdin(requests)
+        .args(["search", "pdf", "--tag", "image", "--limit", "2"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let matches: Vec<serde_yaml::Value> = serde_yaml::from_slice(&output.stdout).unwrap();
+    assert_eq!(matches.len(), 2);
+    assert_eq!(matches[0]["name"].as_str(), Some("script_2"));
+    env.command(&workspace)
+        .args(["search", "pdf", "--limit", "0"])
         .assert()
-        .success();
-    let output = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
-    let response = output
-        .lines()
-        .filter_map(|line| serde_yaml::from_str::<serde_yaml::Value>(line).ok())
-        .find(|value| value["result"]["structuredContent"]["matches"].is_sequence())
-        .expect("tool response should be present");
-    assert_eq!(
-        response["result"]["structuredContent"]["matches"]
-            .as_sequence()
-            .unwrap()
-            .len(),
-        2
-    );
+        .failure()
+        .stderr(predicate::str::contains(
+            "search limit must be greater than zero",
+        ));
 }

@@ -9,8 +9,6 @@ use std::str::FromStr;
 
 const CONFIG_FILE_NAME: &str = "sks.yaml";
 pub(crate) const PATH_PLACEHOLDER: &str = "{{path}}";
-pub(crate) const DEFAULT_MCP_SEARCH_LIMIT: usize = 5;
-pub(crate) const MAX_MCP_SEARCH_LIMIT: usize = 10;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
 #[serde(transparent)]
@@ -57,7 +55,7 @@ impl<'de> Deserialize<'de> for ScriptName {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct ConfigFile {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) mcp: Option<McpConfig>,
+    pub(crate) picker: Option<PickerConfig>,
     #[serde(default)]
     pub(crate) imports: Vec<String>,
     #[serde(default)]
@@ -65,9 +63,8 @@ pub(crate) struct ConfigFile {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct McpConfig {
-    #[serde(default = "default_mcp_search_limit")]
-    pub(crate) search_limit: usize,
+pub(crate) struct PickerConfig {
+    pub(crate) theme: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -101,7 +98,7 @@ struct ConfigSource {
 
 pub(crate) struct LoadedRegistry {
     pub(crate) skills: Vec<Skill>,
-    pub(crate) mcp_search_limit: usize,
+    pub(crate) picker_theme: &'static chromata::Theme,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -146,11 +143,13 @@ pub(crate) fn load_skills() -> Result<Vec<Skill>> {
 
 pub(crate) fn load_registry() -> Result<LoadedRegistry> {
     let sources = load_config_sources()?;
-    let mcp_search_limit = sources[0]
-        .config
-        .mcp
-        .as_ref()
-        .map_or(DEFAULT_MCP_SEARCH_LIMIT, |mcp| mcp.search_limit);
+    let picker_theme = crate::theme::configured(
+        sources[0]
+            .config
+            .picker
+            .as_ref()
+            .map(|picker| picker.theme.as_str()),
+    )?;
     let mut skills = build_skills(&sources)?;
     skills.sort_by(|left, right| {
         left.name
@@ -160,7 +159,7 @@ pub(crate) fn load_registry() -> Result<LoadedRegistry> {
     validate_unique_names(&skills)?;
     Ok(LoadedRegistry {
         skills,
-        mcp_search_limit,
+        picker_theme,
     })
 }
 
@@ -171,7 +170,6 @@ pub(crate) fn display_path(path: &Path) -> String {
 fn load_config_sources() -> Result<Vec<ConfigSource>> {
     let global_path = global_config_path()?;
     let global = load_global_config_source(global_path)?;
-    validate_mcp_config(&global.config)?;
     let global_base_dir = parent_dir(&global.path)?;
     let imports = global.config.imports.clone();
     let resolver = PathResolver {
@@ -206,9 +204,9 @@ fn load_imported_config_source(path: PathBuf) -> Result<ConfigSource> {
     if !config.imports.is_empty() {
         bail!("Imported config {} cannot declare imports.", path.display());
     }
-    if config.mcp.is_some() {
+    if config.picker.is_some() {
         bail!(
-            "Imported config {} cannot declare mcp options.",
+            "Imported config {} cannot declare picker options.",
             path.display()
         );
     }
@@ -326,18 +324,6 @@ fn validate_unique_names(skills: &[Skill]) -> Result<()> {
     Ok(())
 }
 
-fn validate_mcp_config(config: &ConfigFile) -> Result<()> {
-    if let Some(mcp) = &config.mcp
-        && !(1..=MAX_MCP_SEARCH_LIMIT).contains(&mcp.search_limit)
-    {
-        bail!(
-            "mcp.search_limit must be between 1 and {MAX_MCP_SEARCH_LIMIT}, got {}.",
-            mcp.search_limit
-        );
-    }
-    Ok(())
-}
-
 fn parent_dir(path: &Path) -> Result<PathBuf> {
     path.parent()
         .map(Path::to_path_buf)
@@ -346,16 +332,12 @@ fn parent_dir(path: &Path) -> Result<PathBuf> {
 
 fn default_global_config() -> ConfigFile {
     ConfigFile {
-        mcp: Some(McpConfig {
-            search_limit: DEFAULT_MCP_SEARCH_LIMIT,
+        picker: Some(PickerConfig {
+            theme: crate::theme::DEFAULT_NAME.to_string(),
         }),
         imports: vec!["scripts.yaml".to_string()],
         scripts: Vec::new(),
     }
-}
-
-const fn default_mcp_search_limit() -> usize {
-    DEFAULT_MCP_SEARCH_LIMIT
 }
 
 fn serialize_path<S>(path: &Path, serializer: S) -> Result<S::Ok, S::Error>

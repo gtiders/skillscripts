@@ -1,6 +1,6 @@
 [package]
 name = "sks"
-version = "2.0.0"
+version = "3.0.0"
 edition = "2024"
 description = "Registry-driven script launcher and picker"
 license = "MIT"
@@ -15,22 +15,22 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0.102"
+chromata = { version = "1.0.0", default-features = false, features = ["base24", "ratatui-integration", "syntect-integration"] }
 clap = { version = "4.6.1", features = ["derive"] }
 dirs = "6.0.0"
 dunce = "1.0.5"
 flate2 = "1.1.5"
 ratatui = "0.30.2"
 reqwest = { version = "0.12.23", default-features = false, features = ["blocking", "json", "rustls-tls"] }
-rmcp = { version = "3.1.0", features = ["transport-io"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 serde_yaml = "0.9.34"
 sha2 = "0.10.9"
-skim = "4.8.0"
 syntect = { version = "5.3.0", default-features = false, features = ["default-fancy"] }
 tar = "0.4.44"
-tokio = { version = "1.49.0", features = ["io-std", "macros", "rt-multi-thread"] }
 typed-path = "0.12.3"
+unicode-segmentation = "1.13.3"
+unicode-width = "0.2.2"
 zip = { version = "6.0.0", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]

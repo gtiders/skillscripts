@@ -31,6 +31,17 @@ fn install_agent_skill(
     let directory = skills_directory.join(name);
     let path = directory.join("SKILL.md");
     if path.exists() && !force {
+        let existing = fs::read_to_string(&path)
+            .with_context(|| format!("failed to read skill {}", path.display()))?;
+        let updated = migrate_mcp_instructions(&existing);
+        if updated != existing {
+            fs::write(&path, updated)
+                .with_context(|| format!("failed to update skill {}", path.display()))?;
+            return Ok(SkillInstall {
+                path,
+                changed: true,
+            });
+        }
         return Ok(SkillInstall {
             path,
             changed: false,
@@ -45,4 +56,33 @@ fn install_agent_skill(
         path,
         changed: true,
     })
+}
+
+fn migrate_mcp_instructions(content: &str) -> String {
+    content
+        .replace(
+            "Search once with the sks MCP `search_scripts` tool",
+            "Run `sks search \"<capability query>\"` once",
+        )
+        .replace(
+            "search once with the sks MCP `search_scripts` tool",
+            "run `sks search \"<capability query>\"` once",
+        )
+        .replace(
+            "call the sks MCP `search_scripts` tool",
+            "run `sks search \"<capability query>\"`",
+        )
+        .replace(
+            "Call the sks MCP `search_scripts` tool",
+            "Run `sks search \"<capability query>\"`",
+        )
+        .replace("sks MCP registry", "sks YAML registry")
+        .replace(
+            "Read the source resource",
+            "Read the file at the result's `path`",
+        )
+        .replace(
+            "Read the script resource",
+            "Read the file at the result's `path`",
+        )
 }

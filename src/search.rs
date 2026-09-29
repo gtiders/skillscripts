@@ -1,5 +1,5 @@
-use crate::registry::{DEFAULT_MCP_SEARCH_LIMIT, MAX_MCP_SEARCH_LIMIT, Skill, display_path};
-use skim::fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
+use crate::fuzzy;
+use crate::registry::{Skill, display_path};
 
 const PHRASE_BONUS: i64 = 30_000;
 const REQUESTED_TAG_BONUS: i64 = 12_000;
@@ -34,15 +34,14 @@ pub(crate) fn search_skills<'a>(
     skills: &'a [Skill],
     query: Option<&str>,
     tags: &[String],
-    limit: Option<usize>,
+    limit: usize,
 ) -> Vec<SearchMatch<'a>> {
     let query = query.map(str::trim).filter(|value| !value.is_empty());
-    let matcher = SkimMatcherV2::default().ignore_case();
     let terms = query.map(query_terms).unwrap_or_default();
     let mut matches = skills
         .iter()
         .filter_map(|skill| {
-            let (query_score, query_matched) = score_query(skill, query, &terms, &matcher);
+            let (query_score, query_matched) = score_query(skill, query, &terms);
             let (tag_score, tag_matched) = score_requested_tags(skill, tags);
             (query_matched || tag_matched).then_some(SearchMatch {
                 skill,
@@ -57,20 +56,11 @@ pub(crate) fn search_skills<'a>(
             .cmp(&left.score)
             .then_with(|| left.skill.name.cmp(&right.skill.name))
     });
-    matches.truncate(
-        limit
-            .unwrap_or(DEFAULT_MCP_SEARCH_LIMIT)
-            .clamp(1, MAX_MCP_SEARCH_LIMIT),
-    );
+    matches.truncate(limit);
     matches
 }
 
-fn score_query(
-    skill: &Skill,
-    query: Option<&str>,
-    terms: &[String],
-    matcher: &SkimMatcherV2,
-) -> (i64, bool) {
+fn score_query(skill: &Skill, query: Option<&str>, terms: &[String]) -> (i64, bool) {
     let Some(query) = query else {
         return (0, false);
     };
@@ -110,8 +100,7 @@ fn score_query(
         let fuzzy = fields
             .iter()
             .filter_map(|(field, weight)| {
-                matcher
-                    .fuzzy_match(field, term)
+                fuzzy::score(field, term)
                     .filter(|value| *value >= term.chars().count() as i64 * 8)
                     .map(|value| value + weight / 4)
             })
@@ -127,7 +116,7 @@ fn score_query(
     }
     let phrase_matched = score >= PHRASE_BONUS;
     if !phrase_matched && matched_terms == 0 {
-        let fuzzy = matcher.fuzzy_match(&script_search_text(skill), query);
+        let fuzzy = fuzzy::score(&script_search_text(skill), query);
         if let Some(value) = fuzzy.filter(|value| *value >= query.chars().count() as i64 * 8) {
             return (value, true);
         }
@@ -211,7 +200,7 @@ mod tests {
     }
 
     #[test]
-    fn fuzzy_search_reuses_skim_matcher_and_orders_matches() {
+    fn fuzzy_search_orders_matches() {
         let skills = vec![
             skill("notes", "notes.py", "Manage notes", &["text"]),
             skill(
@@ -221,7 +210,7 @@ mod tests {
                 &["pdf"],
             ),
         ];
-        let matches = search_skills(&skills, Some("markdown pdf"), &[], None);
+        let matches = search_skills(&skills, Some("markdown pdf"), &[], 5);
         assert_eq!(
             matches[0].skill.name,
             ScriptName::from_str("markdown").unwrap()
@@ -235,13 +224,13 @@ mod tests {
             skill("image", "image.py", "Convert PNG images", &["image"]),
         ];
         assert_eq!(
-            search_skills(&skills, Some("markdown pdf"), &[], None)[0]
+            search_skills(&skills, Some("markdown pdf"), &[], 5)[0]
                 .skill
                 .name,
             ScriptName::from_str("pdf").unwrap()
         );
         assert_eq!(
-            search_skills(&skills, Some("markdown pdf"), &["image".to_string()], None)[0]
+            search_skills(&skills, Some("markdown pdf"), &["image".to_string()], 5)[0]
                 .skill
                 .name,
             ScriptName::from_str("pdf").unwrap()
@@ -261,7 +250,7 @@ mod tests {
                 &skills,
                 Some("please find a tool to convert markdown to pdf"),
                 &[],
-                None
+                5
             )
             .len(),
             1
@@ -269,7 +258,7 @@ mod tests {
     }
 
     #[test]
-    fn default_limit_returns_only_the_five_highest_value_matches() {
+    fn limit_returns_only_the_five_highest_value_matches() {
         let skills = (1..=8)
             .map(|id| {
                 skill(
@@ -280,7 +269,7 @@ mod tests {
                 )
             })
             .collect::<Vec<_>>();
-        let matches = search_skills(&skills, Some("pdf"), &[], None);
+        let matches = search_skills(&skills, Some("pdf"), &[], 5);
         assert_eq!(matches.len(), 5);
         assert_eq!(
             matches[0].skill.name,

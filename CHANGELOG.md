@@ -7,6 +7,17 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-09-29
+
+### Changed
+
+- Replaced the skim picker with a ratatui card interface, configurable Chromata themes, cached card content, and asynchronous source previews.
+- Replaced the MCP server with `sks search`, which returns ranked YAML results with resolved source paths. The built-in Skills now use the CLI and `sks init` migrates older MCP guidance.
+
+### Removed
+
+- Removed `sks mcp` and the `mcp.search_limit` configuration option. Use `sks search "<query>" --limit N` instead.
+
 ## [2.0.0] - 2026-09-05
 
 ### Changed
