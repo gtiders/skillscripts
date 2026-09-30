@@ -83,6 +83,10 @@ pub(crate) struct Skill {
     pub(crate) name: ScriptName,
     #[serde(serialize_with = "serialize_path")]
     pub(crate) path: PathBuf,
+    /// Path text as written in the registry. Search ranks on this instead of `path`,
+    /// so unrelated absolute prefixes cannot create or weaken matches.
+    #[serde(skip_serializing)]
+    pub(crate) registered_path: String,
     pub(crate) command: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) comment: Option<String>,
@@ -267,6 +271,7 @@ fn build_skill(
     Ok(Skill {
         name: entry.name.clone(),
         path,
+        registered_path: entry.path.clone(),
         command: entry.command.clone(),
         comment: entry.comment.clone(),
         tags: normalize_tags(&entry.name, &entry.tags)?,

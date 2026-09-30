@@ -1,5 +1,5 @@
 use crate::fuzzy;
-use crate::registry::{Skill, display_path};
+use crate::registry::Skill;
 
 const PHRASE_BONUS: i64 = 30_000;
 const REQUESTED_TAG_BONUS: i64 = 12_000;
@@ -23,7 +23,7 @@ pub(crate) fn script_search_text(skill: &Skill) -> String {
     format!(
         "{} {} {} {} {}",
         skill.name,
-        display_path(&skill.path),
+        skill.registered_path,
         skill.command,
         skill.comment.as_deref().unwrap_or_default(),
         skill.tags.join(" ")
@@ -66,14 +66,14 @@ fn score_query(skill: &Skill, query: Option<&str>, terms: &[String]) -> (i64, bo
     };
     let query_lower = query.to_lowercase();
     let name = script_name(skill);
-    let path = display_path(&skill.path);
+    let path = skill.registered_path.as_str();
     let comment = skill.comment.as_deref().unwrap_or_default();
     let tag_text = skill.tags.join(" ");
     let fields = [
         (name.as_str(), 6_000),
         (comment, 4_000),
         (tag_text.as_str(), 8_000),
-        (path.as_str(), 2_000),
+        (path, 2_000),
         (skill.command.as_str(), 1_000),
     ];
 
@@ -193,6 +193,7 @@ mod tests {
         Skill {
             name: ScriptName::from_str(id).unwrap(),
             path: PathBuf::from(name),
+            registered_path: name.to_string(),
             command: "python {{path}}".to_string(),
             comment: Some(comment.to_string()),
             tags: tags.iter().map(|tag| tag.to_string()).collect(),
@@ -255,6 +256,19 @@ mod tests {
             .len(),
             1
         );
+    }
+
+    #[test]
+    fn resolved_absolute_paths_do_not_create_matches() {
+        let mut notes = skill("notes", "notes.py", "Manage notes", &["text"]);
+        notes.path = PathBuf::from("/tmp/pdfprobe/home/.config/sks/scripts/notes.py");
+        assert!(search_skills(&[notes], Some("markdown pdf"), &[], 5).is_empty());
+    }
+
+    #[test]
+    fn registered_directory_queries_still_match() {
+        let script = skill("plot_aimd", "imports/vasp/plot_aimd.py", "Plot AIMD", &[]);
+        assert_eq!(search_skills(&[script], Some("vasp"), &[], 5).len(), 1);
     }
 
     #[test]

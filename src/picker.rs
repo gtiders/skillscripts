@@ -917,6 +917,7 @@ mod tests {
         Skill {
             name: ScriptName::from_str(name).unwrap(),
             path: PathBuf::from("scripts/example.py"),
+            registered_path: "scripts/example.py".into(),
             command: "python {{path}}".into(),
             comment: Some(comment.into()),
             tags: vec!["ase".into()],

@@ -13,6 +13,10 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 - Rewrote the `sks-script-create` Skill around confirming the script interface before edits, keeping parameters minimal, scientific plotting defaults, and validating the result before handing it off. Its description now triggers on changes to registered scripts and their command-line interfaces.
 
+### Fixed
+
+- Ranked search and picker filtering now match the registry path text instead of the resolved absolute path, so unrelated directory names in the resolved path (temporary directories, home directories) no longer produce spurious matches. Result output still reports the resolved path.
+
 ## [3.0.0] - 2026-09-29
 
 ### Changed
