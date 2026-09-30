@@ -7,6 +7,12 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [3.0.1] - 2026-09-30
+
+### Changed
+
+- Rewrote the `sks-script-create` Skill around confirming the script interface before edits, keeping parameters minimal, scientific plotting defaults, and validating the result before handing it off. Its description now triggers on changes to registered scripts and their command-line interfaces.
+
 ## [3.0.0] - 2026-09-29
 
 ### Changed
